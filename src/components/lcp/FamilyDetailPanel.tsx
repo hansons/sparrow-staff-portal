@@ -18,6 +18,7 @@ import {
   addStaffNote,
   assignHomework,
   awardVoucher,
+  deleteFamily,
   deleteHomework,
   fetchHomeworkForFamily,
   fetchMessages,
@@ -26,6 +27,7 @@ import {
   fetchVouchers,
   fulfillRedemption,
   sendStaffMessage,
+  setFamilyActive,
   setHomeworkStatus,
   updateFamily,
 } from '@/lib/lcp';
@@ -107,7 +109,17 @@ export function FamilyDetailPanel({
         ))}
       </div>
 
-      {tab === 'progress' && <ProgressTab family={family} sessions={sessions} onChanged={onChanged} />}
+      {tab === 'progress' && (
+        <ProgressTab
+          family={family}
+          sessions={sessions}
+          onChanged={onChanged}
+          onRemoved={() => {
+            onChanged();
+            onClose();
+          }}
+        />
+      )}
       {tab === 'homework' && (
         <HomeworkTab
           family={family}
@@ -155,12 +167,17 @@ function ProgressTab({
   family,
   sessions,
   onChanged,
+  onRemoved,
 }: {
   family: Family;
   sessions: CurriculumSession[];
   onChanged: () => void;
+  onRemoved: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const current = sessions.find((s) => s.session_number === family.current_session_number);
   const pct = Math.round((family.current_session_number / TOTAL_SESSIONS) * 100);
 
@@ -183,6 +200,28 @@ function ProgressTab({
     await updateFamily(family.id, { housing_savings_cents: next });
     setBusy(false);
     onChanged();
+  }
+  async function cancelParticipation() {
+    setBusy(true);
+    setErr(null);
+    try {
+      await setFamilyActive(family.id, false);
+      onRemoved();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not cancel participation.');
+      setBusy(false);
+    }
+  }
+  async function removeForever() {
+    setBusy(true);
+    setErr(null);
+    try {
+      await deleteFamily(family.id);
+      onRemoved();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not delete the family.');
+      setBusy(false);
+    }
   }
 
   return (
@@ -244,6 +283,76 @@ function ProgressTab({
             + $100 (perfect month)
           </button>
         </div>
+      </div>
+
+      <div className="border-t border-sparrow-rule pt-4">
+        <span className="field-label">Participation</span>
+        <p className="mt-1 text-xs text-sparrow-gray">
+          Cancelling removes {family.display_name} from the active roster but keeps their records.
+          Deleting erases everything permanently.
+        </p>
+
+        <div className="mt-2">
+          {!confirmCancel ? (
+            <button
+              disabled={busy}
+              onClick={() => {
+                setConfirmDelete(false);
+                setConfirmCancel(true);
+              }}
+              className="btn-ghost border border-sparrow-rule"
+            >
+              Cancel participation
+            </button>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-sparrow-ink">Remove from the active roster?</span>
+              <button disabled={busy} onClick={cancelParticipation} className="btn-primary">
+                {busy ? 'Working…' : 'Yes, cancel'}
+              </button>
+              <button disabled={busy} onClick={() => setConfirmCancel(false)} className="btn-ghost">
+                Keep active
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-2">
+          {!confirmDelete ? (
+            <button
+              disabled={busy}
+              onClick={() => {
+                setConfirmCancel(false);
+                setConfirmDelete(true);
+              }}
+              className="text-xs text-sparrow-gray underline hover:text-priority-p1"
+            >
+              Delete permanently…
+            </button>
+          ) : (
+            <div className="rounded-lg border border-priority-p1/30 bg-priority-p1/5 p-3">
+              <p className="text-xs text-priority-p1">
+                Permanently delete {family.display_name} and all their homework, attendance,
+                messages, notes, and vouchers? This can't be undone. If they already created a
+                login, an admin must remove it in Supabase separately.
+              </p>
+              <div className="mt-2 flex gap-2">
+                <button
+                  disabled={busy}
+                  onClick={removeForever}
+                  className="rounded-lg bg-priority-p1 px-3 py-1.5 text-sm font-medium text-white"
+                >
+                  {busy ? 'Deleting…' : 'Delete permanently'}
+                </button>
+                <button disabled={busy} onClick={() => setConfirmDelete(false)} className="btn-ghost">
+                  Keep
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {err && <p className="mt-2 text-sm text-priority-p1">{err}</p>}
       </div>
     </div>
   );

@@ -62,6 +62,22 @@ export async function createFamily(input: FamilyInput): Promise<void> {
   }
 }
 
+/** Soft cancel: drop a family from the active roster but keep all their records. */
+export async function setFamilyActive(id: string, active: boolean): Promise<void> {
+  const { error } = await supabase.from('families').update({ active }).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Hard delete: removes the family and cascades to all their LCP data (homework,
+ * attendance, messages, notes, vouchers). Irreversible. Their auth login, if they
+ * already registered, is NOT removed — an admin must delete it in Supabase separately.
+ */
+export async function deleteFamily(id: string): Promise<void> {
+  const { error } = await supabase.from('families').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
 // ── Curriculum (for the progress map + session picker) ───────────────
 export async function fetchSessions(): Promise<CurriculumSession[]> {
   const { data, error } = await supabase
