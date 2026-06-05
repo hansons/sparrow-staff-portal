@@ -1,29 +1,42 @@
--- Sparrow Staff Portal — dev seed (SYNTHETIC data, no real PII).
--- Run AFTER 0001_init.sql.
+-- Sparrow Staff Portal — dev seed (SYNTHETIC task data; REAL staff roster + emails).
+-- Run AFTER 0001_init.sql (and before seed_lcp.sql, which needs these profile UUIDs).
 --
--- IMPORTANT: the `email` values below double as the sign-in allowlist. Update each
--- to the staff member's ACTUAL Google Workspace address before they sign in, or
--- their login will be rejected as "not on the Sparrow staff roster".
+-- The `email` values are the sign-in allowlist — they must be each person's ACTUAL
+-- Google Workspace address or their login is rejected as "not on the Sparrow roster".
 --
--- Org chart (from Susanna's System Brief):
---   Andrew (ED) ............. admin  / exec        (top)
---   Susanna (Ops Mgr) ....... admin  / ops         -> Andrew
---   Shelly (LCP Director) ... manager/ lcp         -> Andrew
---   Bethany (Partnerships) .. staff  / partnerships-> Susanna
---   Audrey (Resident/Family). staff  / toc         -> Susanna
---   Lindy (TOC Caretaker) ... staff  / toc         -> Susanna
---   Raymond (Groundskeeper).. staff  / toc         -> Susanna
---   Teresa (Bookkeeper) ..... staff  / ops         -> Andrew
+-- Re-seeding? `profiles` upserts on its fixed UUID (id), so this file is re-runnable.
+-- If the DB is in a half-seeded state, run the reset block from the LCP buildout notes
+-- first (truncate … cascade), then run the seeds in order.
+--
+-- Org chart:
+--   Andrew (ED) .............. admin   / exec   -> Board (no manager)
+--   Susanna (Ops Mgr) ........ admin   / ops    -> Andrew
+--   Ryan Hanson (consultant) . admin   / ops    -> Susanna
+--   Byron (IT subcontractor) . admin   / ops    -> Andrew
+--   Shelly (LCP Director) .... manager / lcp    -> Andrew
+--   Bethany (Partnerships) ... staff   / partnerships -> Susanna
+--   Audrey (Resident/Family) . staff   / toc    -> Susanna
+--   Lindy (TOC Caretaker) .... staff   / toc    -> Susanna
+--   Raymond (Groundskeeper) .. staff   / toc    -> Susanna
+--   Teresa (Bookkeeper) ...... staff   / ops    -> Andrew
 
 insert into profiles (id, email, full_name, role, department, manager_email) values
-  ('00000000-0000-0000-0000-000000000001', 'andrew@sparrowinc.org',  'Andrew Wenger',  'admin',   'exec',         null),
-  ('00000000-0000-0000-0000-000000000002', 'ryanlhanson@gmail.com',  'Susanna Basden', 'admin',   'ops',          'andrew@sparrowinc.org'), -- TEST login (restore susanna@sparrowinc.org for production)
-  ('00000000-0000-0000-0000-000000000003', 'shelly@sparrowinc.org',  'Shelly Wenger',  'manager', 'lcp',          'andrew@sparrowinc.org'),
-  ('00000000-0000-0000-0000-000000000004', 'bethany@sparrowinc.org', 'Bethany Wenger', 'staff',   'partnerships', 'susanna@sparrowinc.org'),
-  ('00000000-0000-0000-0000-000000000005', 'audrey@sparrowinc.org',  'Audrey',         'staff',   'toc',          'susanna@sparrowinc.org'),
-  ('00000000-0000-0000-0000-000000000006', 'lindy@sparrowinc.org',   'Lindy',          'staff',   'toc',          'susanna@sparrowinc.org'),
-  ('00000000-0000-0000-0000-000000000007', 'raymond@sparrowinc.org', 'Raymond',        'staff',   'toc',          'susanna@sparrowinc.org'),
-  ('00000000-0000-0000-0000-000000000008', 'teresa@sparrowinc.org',  'Teresa',         'staff',   'ops',          'andrew@sparrowinc.org');
+  ('00000000-0000-0000-0000-000000000001', 'executivedirector@sparrowinc.org',  'Andrew Wenger',  'admin',   'exec',         null),
+  ('00000000-0000-0000-0000-000000000002', 'susannab@sparrowinc.org',           'Susanna Basden', 'admin',   'ops',          'executivedirector@sparrowinc.org'),
+  ('00000000-0000-0000-0000-000000000003', 'lifechangedirector@sparrowinc.org', 'Shelly Wenger',  'manager', 'lcp',          'executivedirector@sparrowinc.org'),
+  ('00000000-0000-0000-0000-000000000004', 'bethanyw@sparrowinc.org',            'Bethany Wenger', 'staff',   'partnerships', 'susannab@sparrowinc.org'),       -- PLACEHOLDER email — confirm
+  ('00000000-0000-0000-0000-000000000005', 'audreyb@sparrowinc.org',             'Audrey',         'staff',   'toc',          'susannab@sparrowinc.org'),       -- PLACEHOLDER email — confirm
+  ('00000000-0000-0000-0000-000000000006', 'lindyw@sparrowinc.org',              'Lindy',          'staff',   'toc',          'susannab@sparrowinc.org'),       -- PLACEHOLDER email — confirm
+  ('00000000-0000-0000-0000-000000000007', 'raymondd@sparrowinc.org',            'Raymond',        'staff',   'toc',          'susannab@sparrowinc.org'),       -- PLACEHOLDER email — confirm
+  ('00000000-0000-0000-0000-000000000008', 'accounting@sparrowinc.org',             'Teresa',         'staff',   'ops',          'executivedirector@sparrowinc.org'), -- PLACEHOLDER email — confirm
+  ('00000000-0000-0000-0000-000000000009', 'ryanlhanson@gmail.com',             'Ryan Hanson',    'admin',   'ops',          'susannab@sparrowinc.org'),
+  ('00000000-0000-0000-0000-000000000010', 'it@sparrowinc.org',                 'Byron',          'admin',   'ops',          'executivedirector@sparrowinc.org')
+on conflict (id) do update set
+  email         = excluded.email,
+  full_name     = excluded.full_name,
+  role          = excluded.role,
+  department    = excluded.department,
+  manager_email = excluded.manager_email;
 
 -- Synthetic tasks. Due dates are relative to today so grouping always demos well:
 --   overdue / today / this week / upcoming.
