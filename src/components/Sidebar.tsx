@@ -1,9 +1,10 @@
-export type View = 'home' | 'twin-oaks' | 'lcp' | 'tasks' | 'calendar' | 'settings' | 'staff';
+export type View = 'home' | 'twin-oaks' | 'lcp' | 'partnerships' | 'tasks' | 'calendar' | 'settings' | 'staff';
 
 interface Props {
   view: View;
   isAdmin: boolean;
   lcpAccess: boolean;
+  partnershipsAccess: boolean;
   onNavigate: (v: View) => void;
   open: boolean; // mobile drawer
   onClose: () => void;
@@ -17,17 +18,19 @@ function Soon() {
   );
 }
 
-const SOON_ROOMS = ['Partnerships', 'Operations'];
+const SOON_ROOMS = ['Operations'];
 
 function NavContent({
   view,
   isAdmin,
   lcpAccess,
+  partnershipsAccess,
   onNavigate,
 }: {
   view: View;
   isAdmin: boolean;
   lcpAccess: boolean;
+  partnershipsAccess: boolean;
   onNavigate: (v: View) => void;
 }) {
   const itemBase = 'flex items-center gap-2 rounded-lg px-3 py-2 text-left transition';
@@ -60,6 +63,14 @@ function NavContent({
             LifeChange
           </button>
         )}
+        {partnershipsAccess && (
+          <button
+            onClick={() => onNavigate('partnerships')}
+            className={`${itemBase} ${view === 'partnerships' ? active : idle}`}
+          >
+            Partnerships
+          </button>
+        )}
         {SOON_ROOMS.map((r) => (
           <span key={r} className={`${itemBase} text-sparrow-gray/70`}>
             {r} <Soon />
@@ -84,12 +95,18 @@ function NavContent({
   );
 }
 
-export function Sidebar({ view, isAdmin, lcpAccess, onNavigate, open, onClose }: Props) {
+export function Sidebar({ view, isAdmin, lcpAccess, partnershipsAccess, onNavigate, open, onClose }: Props) {
   return (
     <>
       {/* Desktop: static sidebar */}
       <aside className="hidden w-56 shrink-0 flex-col border-r border-sparrow-rule bg-white px-3 py-5 md:flex">
-        <NavContent view={view} isAdmin={isAdmin} lcpAccess={lcpAccess} onNavigate={onNavigate} />
+        <NavContent
+          view={view}
+          isAdmin={isAdmin}
+          lcpAccess={lcpAccess}
+          partnershipsAccess={partnershipsAccess}
+          onNavigate={onNavigate}
+        />
       </aside>
 
       {/* Mobile: slide-in drawer */}
@@ -109,6 +126,7 @@ export function Sidebar({ view, isAdmin, lcpAccess, onNavigate, open, onClose }:
           view={view}
           isAdmin={isAdmin}
           lcpAccess={lcpAccess}
+          partnershipsAccess={partnershipsAccess}
           onNavigate={(v) => {
             onNavigate(v);
             onClose();

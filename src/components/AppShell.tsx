@@ -8,6 +8,7 @@ import { CalendarView } from '@/pages/CalendarView';
 import { SettingsView } from '@/pages/SettingsView';
 import { TwinOaksRoom } from './twinoaks/TwinOaksRoom';
 import { LcpRoom } from './lcp/LcpRoom';
+import { PartnershipsRoom } from './partnerships/PartnershipsRoom';
 import { StaffAdmin } from './admin/StaffAdmin';
 import { ValuesFooter } from './ValuesFooter';
 
@@ -21,6 +22,12 @@ export function AppShell() {
   // Phase 1: the LCP Room serves full LCP staff (Shelly, Audrey, Andrew). Extended
   // read-only access (Bethany, Susanna) lands in Phase 2 (Stories & Prayer).
   const lcpAccess = profile.lcp_role === 'full';
+  // CRM-facing roles see the Partnerships Room nav: partnerships staff (Bethany), admins
+  // (Andrew, Susanna), and anyone granted the per-person flag in the Staff panel (e.g. FST /
+  // volunteer leads). Named owners without the flag still reach their own partners via the
+  // tasks the room emits to their triage inbox (RLS scopes their direct access by ownership).
+  const partnershipsAccess =
+    isAdmin || profile.department === 'partnerships' || profile.partnerships_access;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -30,6 +37,7 @@ export function AppShell() {
           view={view}
           isAdmin={isAdmin}
           lcpAccess={lcpAccess}
+          partnershipsAccess={partnershipsAccess}
           onNavigate={setView}
           open={navOpen}
           onClose={() => setNavOpen(false)}
@@ -41,6 +49,7 @@ export function AppShell() {
           {view === 'settings' && <SettingsView />}
           {view === 'twin-oaks' && <TwinOaksRoom />}
           {view === 'lcp' && <LcpRoom />}
+          {view === 'partnerships' && <PartnershipsRoom />}
           {view === 'staff' && <StaffAdmin />}
         </main>
       </div>

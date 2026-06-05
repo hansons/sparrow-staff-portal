@@ -40,6 +40,23 @@ only backend. Destined for `staff.sparrowinc.org`.
 - **Work-order tracker** — create/assign/triage, with priority + status.
 - **Resident records are RLS-gated to TOC staff + admins** (others see the grid, not the PII).
 
+**Partnerships Room ("CRM")**
+- **Stewardship engine, not a contact dump.** The architecture's load-bearing rule —
+  *"every relationship needs a named owner and a rhythm, not just a record"* — is the design:
+  each partner carries an **owner** and a **cadence**, and the room derives who is **on cadence**
+  (green) · **due soon** (amber) · **overdue** (red) · **no cadence** (slate, the defect) · **lapsed**.
+- **Partner directory** sorted worst-first, color-coded by stewardship status, filterable by type
+  (Donors · Churches · Community · Volunteers · Prayer · FST · Foundations).
+- **Touchpoint log** per partner — logging a contact resets the cadence clock and **resolves the
+  spine task** for that relationship.
+- **Spine integration:** on load, every *overdue* touchpoint is emitted (dedup-safe) to its
+  owner's **Triage Inbox** — an overdue relationship becomes a real task on a real person's day.
+- **Access:** partnerships staff (Bethany) + admins manage all; admins can also grant the room to
+  any other relationship owner via a **Partnerships Room access** checkbox in the Staff panel
+  (mirrors the LifeChange access toggle). Independently, a partner's **named owner** always sees
+  and stewards their own (so Audrey's FST members, Shelly's volunteers, Andrew's maintenance crew
+  reach their relationships even without full-room access) — enforced by RLS, not app code.
+
 Permissions are enforced in the database via RLS — not in app code.
 
 ## One-time setup
@@ -69,13 +86,16 @@ Migrations:
 4. `supabase/migrations/0004_staff_admin.sql`   (admin staff management)
 5. `supabase/migrations/0005_lcp.sql`   (LifeChange Program — families, curriculum, vouchers)
 6. `supabase/migrations/0006_spine.sql`   (cross-system task API, triage, settings, quick wins, calendar)
+7. `supabase/migrations/0007_lcp_fk_cascade.sql`   (ON UPDATE CASCADE backfill for profiles FKs)
+8. `supabase/migrations/0008_partnerships.sql`   (Partnerships Room — partners + touchpoints + cadence sweep)
 
 Seeds:
-7. `supabase/seed.sql`   (staff + sample tasks)
-8. `supabase/seed_twin_oaks.sql`   (61 lots + sample residents + work orders)
-9. `supabase/seed_social.sql`   (sample announcement + notification)
-10. `supabase/seed_lcp.sql`   (sample families + curriculum)
-11. `supabase/seed_spine.sql`   (recurring meeting cadences + quick wins + a demo Home layout)
+9. `supabase/seed.sql`   (staff + sample tasks)
+10. `supabase/seed_twin_oaks.sql`   (61 lots + sample residents + work orders)
+11. `supabase/seed_social.sql`   (sample announcement + notification)
+12. `supabase/seed_lcp.sql`   (sample families + curriculum)
+13. `supabase/seed_spine.sql`   (recurring meeting cadences + quick wins + a demo Home layout)
+14. `supabase/seed_partnerships.sql`   (real community/church partners + synthetic donors/volunteers + touchpoints)
 
 > ⚠️ Before staff sign in, edit `seed.sql` (or the `profiles` rows) so each `email`
 > matches the person's **real Google Workspace address**. The email list is the

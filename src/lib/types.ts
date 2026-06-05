@@ -24,6 +24,8 @@ export interface Profile {
   active: boolean;
   created_at: string;
   lcp_role: LcpRole;
+  /** Full Partnerships Room access independent of department (admins + dept='partnerships' have it implicitly). */
+  partnerships_access: boolean;
 }
 
 export interface Task {
