@@ -1,0 +1,105 @@
+import { useEffect, useState } from 'react';
+import { fetchNotifications, markAllRead, markRead, type AppNotification } from '@/lib/social';
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function describe(n: AppNotification): string {
+  const who = n.actor?.full_name ?? 'Someone';
+  return n.type === 'assigned' ? `${who} assigned you a task` : `${who} commented on a task`;
+}
+
+export function NotificationBell() {
+  const [items, setItems] = useState<AppNotification[]>([]);
+  const [open, setOpen] = useState(false);
+
+  async function load() {
+    try {
+      setItems(await fetchNotifications());
+    } catch {
+      /* non-critical */
+    }
+  }
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const unread = items.filter((n) => !n.read).length;
+
+  async function openMenu() {
+    setOpen(true);
+    await load();
+  }
+  async function onItemClick(n: AppNotification) {
+    if (!n.read) {
+      await markRead(n.id);
+      void load();
+    }
+  }
+  async function clearAll() {
+    await markAllRead();
+    void load();
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => (open ? setOpen(false) : void openMenu())}
+        className="relative rounded-lg p-2 text-sparrow-gray transition hover:bg-sparrow-mist hover:text-sparrow-ink"
+        aria-label="Notifications"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
+        {unread > 0 && (
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-priority-p1 px-1 text-[10px] font-semibold text-white">
+            {unread}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
+          <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-sparrow-rule bg-white shadow-card">
+            <div className="flex items-center justify-between border-b border-sparrow-rule px-4 py-2">
+              <span className="text-sm font-semibold text-sparrow-ink">Notifications</span>
+              {unread > 0 && (
+                <button onClick={() => void clearAll()} className="text-xs text-sparrow-green hover:underline">
+                  Mark all read
+                </button>
+              )}
+            </div>
+            <ul className="max-h-96 divide-y divide-sparrow-rule overflow-y-auto">
+              {items.length === 0 && (
+                <li className="px-4 py-6 text-center text-sm text-sparrow-gray">You're all caught up.</li>
+              )}
+              {items.map((n) => (
+                <li key={n.id}>
+                  <button
+                    onClick={() => void onItemClick(n)}
+                    className={`block w-full px-4 py-3 text-left hover:bg-sparrow-mist ${
+                      n.read ? '' : 'bg-sparrow-sage/40'
+                    }`}
+                  >
+                    <p className="text-sm text-sparrow-ink">{describe(n)}</p>
+                    {n.body && <p className="truncate text-xs text-sparrow-gray">{n.body}</p>}
+                    <p className="mt-0.5 text-[11px] text-sparrow-gray/70">{timeAgo(n.created_at)}</p>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
