@@ -250,6 +250,19 @@ export function PartnerDetailPanel({
               action={partner.phone ? <a className="text-xs text-sparrow-green hover:underline" href={`tel:${partner.phone}`}>Call</a> : undefined}
             />
           </div>
+          <div>
+            <span className="field-label">Mailing address</span>
+            <textarea
+              defaultValue={partner.address ?? ''}
+              onBlur={(e) => {
+                const v = e.target.value.trim() || null;
+                if (v !== (partner.address ?? null)) void patch({ address: v });
+              }}
+              rows={2}
+              placeholder="Street, city, state ZIP"
+              className="field-input"
+            />
+          </div>
           <EditField label="Source (how the connection was made)" value={partner.source ?? ''} disabled={busy} onSave={(v) => void patch({ source: v })} />
           <Row label="Last touch" value={shortDate(partner.last_touchpoint_at)} />
         </section>

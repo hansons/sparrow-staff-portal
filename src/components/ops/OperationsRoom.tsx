@@ -1,0 +1,141 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@/auth/AuthContext';
+import { fetchProfiles } from '@/lib/data';
+import type { Profile } from '@/lib/types';
+import { fetchActiveChecklists, fetchAllReviews, fetchAllTouchpoints, fetchOpenIssues } from '@/lib/ops';
+import { daysSince, touchpointTone, type Checklist, type Issue, type Review, type Touchpoint } from '@/lib/ops-types';
+import { StaffMemberPanel } from './StaffMemberPanel';
+
+export function OperationsRoom() {
+  const { profile } = useAuth();
+  const [staff, setStaff] = useState<Profile[]>([]);
+  const [touchpoints, setTouchpoints] = useState<Touchpoint[]>([]);
+  const [openIssues, setOpenIssues] = useState<Issue[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [checklists, setChecklists] = useState<Checklist[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const [st, tp, iss, rv, ck] = await Promise.all([
+        fetchProfiles(),
+        fetchAllTouchpoints(),
+        fetchOpenIssues(),
+        fetchAllReviews(),
+        fetchActiveChecklists(),
+      ]);
+      setStaff(st);
+      setTouchpoints(tp);
+      setOpenIssues(iss);
+      setReviews(rv);
+      setChecklists(ck);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load Operations data.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const lastMet = useMemo(() => {
+    const map = new Map<string, string>(); // touchpoints arrive newest-first
+    for (const t of touchpoints) if (!map.has(t.staff_id)) map.set(t.staff_id, t.met_on);
+    return map;
+  }, [touchpoints]);
+
+  const openIssueCount = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const i of openIssues) map.set(i.staff_id, (map.get(i.staff_id) ?? 0) + 1);
+    return map;
+  }, [openIssues]);
+
+  const activeChecklist = useMemo(() => {
+    const map = new Map<string, Checklist>();
+    for (const c of checklists) map.set(c.staff_id, c);
+    return map;
+  }, [checklists]);
+
+  const overdueReviews = reviews.filter((r) => r.status === 'scheduled' && (daysSince(r.due_date) ?? 0) > 0);
+  const overdueTouchpoints = staff.filter((s) => {
+    const d = daysSince(lastMet.get(s.id) ?? null);
+    return d === null || d >= 60;
+  });
+
+  function openStaff(id: string) {
+    setSelectedId(id);
+    setPanelOpen(true);
+  }
+
+  if (loading) return <p className="p-8 text-sm text-sparrow-gray">Loading Operations…</p>;
+  if (error) return <p className="p-8 text-sm text-priority-p1">{error}</p>;
+
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+      <div>
+        <h1 className="font-serif text-2xl font-semibold">Operations</h1>
+        <p className="mt-1 text-sm text-sparrow-gray">Staff management · {staff.length} people</p>
+      </div>
+
+      {(overdueReviews.length > 0 || overdueTouchpoints.length > 0) && (
+        <div className="mt-4 flex flex-wrap gap-3 rounded-xl border border-sparrow-gold/40 bg-sparrow-cream px-4 py-3 text-sm">
+          {overdueReviews.length > 0 && <span>📋 {overdueReviews.length} review{overdueReviews.length > 1 ? 's' : ''} overdue</span>}
+          {overdueTouchpoints.length > 0 && (
+            <span>🤝 {overdueTouchpoints.length} {overdueTouchpoints.length > 1 ? 'people' : 'person'} need a touch-base</span>
+          )}
+        </div>
+      )}
+
+      <ul className="mt-6 space-y-2">
+        {staff.map((s) => {
+          const tone = touchpointTone(daysSince(lastMet.get(s.id) ?? null));
+          const issues = openIssueCount.get(s.id) ?? 0;
+          const ck = activeChecklist.get(s.id);
+          return (
+            <li key={s.id}>
+              <button
+                onClick={() => openStaff(s.id)}
+                className="flex w-full items-center gap-4 rounded-2xl border border-sparrow-rule bg-white p-4 text-left shadow-card transition hover:border-sparrow-green/40"
+              >
+                <div className="min-w-0 flex-1">
+                  <span className="font-medium text-sparrow-ink">{s.full_name}</span>
+                  <p className="text-xs capitalize text-sparrow-gray">
+                    {s.role} · {s.department}
+                  </p>
+                </div>
+                {ck && (
+                  <span className="rounded-full bg-sparrow-green/10 px-2 py-0.5 text-[10px] font-medium capitalize text-sparrow-green">
+                    {ck.kind}
+                  </span>
+                )}
+                {issues > 0 && (
+                  <span className="rounded-full bg-priority-p1/15 px-2 py-0.5 text-[10px] font-medium text-priority-p1">
+                    {issues} issue{issues > 1 ? 's' : ''}
+                  </span>
+                )}
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${tone.chip}`} title="Last 1:1">
+                  {tone.label}
+                </span>
+                <span className="shrink-0 text-sparrow-gray">›</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      <StaffMemberPanel
+        open={panelOpen}
+        staff={selectedId ? staff.find((s) => s.id === selectedId) ?? null : null}
+        currentUserId={profile?.id ?? ''}
+        onClose={() => setPanelOpen(false)}
+        onChanged={load}
+      />
+    </div>
+  );
+}

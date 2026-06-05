@@ -9,6 +9,7 @@ import { SettingsView } from '@/pages/SettingsView';
 import { TwinOaksRoom } from './twinoaks/TwinOaksRoom';
 import { LcpRoom } from './lcp/LcpRoom';
 import { PartnershipsRoom } from './partnerships/PartnershipsRoom';
+import { OperationsRoom } from './ops/OperationsRoom';
 import { StaffAdmin } from './admin/StaffAdmin';
 import { ValuesFooter } from './ValuesFooter';
 
@@ -28,6 +29,8 @@ export function AppShell() {
   // tasks the room emits to their triage inbox (RLS scopes their direct access by ownership).
   const partnershipsAccess =
     isAdmin || profile.department === 'partnerships' || profile.partnerships_access;
+  // Operations Room (staff management): Andrew, Susanna, Shelly (set via ops_access).
+  const opsAccess = profile.ops_access;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -38,6 +41,7 @@ export function AppShell() {
           isAdmin={isAdmin}
           lcpAccess={lcpAccess}
           partnershipsAccess={partnershipsAccess}
+          opsAccess={opsAccess}
           onNavigate={setView}
           open={navOpen}
           onClose={() => setNavOpen(false)}
@@ -50,6 +54,7 @@ export function AppShell() {
           {view === 'twin-oaks' && <TwinOaksRoom />}
           {view === 'lcp' && <LcpRoom />}
           {view === 'partnerships' && <PartnershipsRoom />}
+          {view === 'operations' && <OperationsRoom />}
           {view === 'staff' && <StaffAdmin />}
         </main>
       </div>

@@ -12,7 +12,7 @@ import type {
 // manage everything; a partner's named owner sees/stewards their own.
 
 const PARTNER_COLS =
-  'id, name, type, stage, owner_id, organization, contact_name, email, phone, donor_tier, cadence_days, last_touchpoint_at, source, notes, active, created_at';
+  'id, name, type, stage, owner_id, organization, contact_name, email, phone, address, donor_tier, cadence_days, last_touchpoint_at, source, notes, active, created_at';
 
 // ── Partners ─────────────────────────────────────────────────────────
 export async function fetchPartners(): Promise<Partner[]> {
@@ -34,6 +34,7 @@ export interface PartnerInput {
   contact_name: string | null;
   email: string | null;
   phone: string | null;
+  address: string | null;
   donor_tier: DonorTier | null;
   cadence_days: number | null;
   source: string | null;
@@ -58,6 +59,7 @@ export async function updatePartner(
       | 'contact_name'
       | 'email'
       | 'phone'
+      | 'address'
       | 'donor_tier'
       | 'cadence_days'
       | 'source'

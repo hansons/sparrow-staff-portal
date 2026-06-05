@@ -26,6 +26,7 @@ export interface Partner {
   contact_name: string | null;
   email: string | null;
   phone: string | null;
+  address: string | null;
   donor_tier: DonorTier | null;
   cadence_days: number | null;
   last_touchpoint_at: string | null;

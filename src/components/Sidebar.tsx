@@ -1,10 +1,11 @@
-export type View = 'home' | 'twin-oaks' | 'lcp' | 'partnerships' | 'tasks' | 'calendar' | 'settings' | 'staff';
+export type View = 'home' | 'twin-oaks' | 'lcp' | 'partnerships' | 'operations' | 'tasks' | 'calendar' | 'settings' | 'staff';
 
 interface Props {
   view: View;
   isAdmin: boolean;
   lcpAccess: boolean;
   partnershipsAccess: boolean;
+  opsAccess: boolean;
   onNavigate: (v: View) => void;
   open: boolean; // mobile drawer
   onClose: () => void;
@@ -18,19 +19,21 @@ function Soon() {
   );
 }
 
-const SOON_ROOMS = ['Operations'];
+const SOON_ROOMS: string[] = [];
 
 function NavContent({
   view,
   isAdmin,
   lcpAccess,
   partnershipsAccess,
+  opsAccess,
   onNavigate,
 }: {
   view: View;
   isAdmin: boolean;
   lcpAccess: boolean;
   partnershipsAccess: boolean;
+  opsAccess: boolean;
   onNavigate: (v: View) => void;
 }) {
   const itemBase = 'flex items-center gap-2 rounded-lg px-3 py-2 text-left transition';
@@ -71,6 +74,14 @@ function NavContent({
             Partnerships
           </button>
         )}
+        {opsAccess && (
+          <button
+            onClick={() => onNavigate('operations')}
+            className={`${itemBase} ${view === 'operations' ? active : idle}`}
+          >
+            Operations
+          </button>
+        )}
         {SOON_ROOMS.map((r) => (
           <span key={r} className={`${itemBase} text-sparrow-gray/70`}>
             {r} <Soon />
@@ -95,7 +106,7 @@ function NavContent({
   );
 }
 
-export function Sidebar({ view, isAdmin, lcpAccess, partnershipsAccess, onNavigate, open, onClose }: Props) {
+export function Sidebar({ view, isAdmin, lcpAccess, partnershipsAccess, opsAccess, onNavigate, open, onClose }: Props) {
   return (
     <>
       {/* Desktop: static sidebar */}
@@ -105,6 +116,7 @@ export function Sidebar({ view, isAdmin, lcpAccess, partnershipsAccess, onNaviga
           isAdmin={isAdmin}
           lcpAccess={lcpAccess}
           partnershipsAccess={partnershipsAccess}
+          opsAccess={opsAccess}
           onNavigate={onNavigate}
         />
       </aside>
@@ -127,6 +139,7 @@ export function Sidebar({ view, isAdmin, lcpAccess, partnershipsAccess, onNaviga
           isAdmin={isAdmin}
           lcpAccess={lcpAccess}
           partnershipsAccess={partnershipsAccess}
+          opsAccess={opsAccess}
           onNavigate={(v) => {
             onNavigate(v);
             onClose();

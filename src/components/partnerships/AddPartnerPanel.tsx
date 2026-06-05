@@ -42,6 +42,7 @@ export function AddPartnerPanel({
   const [contactName, setContactName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
   const [source, setSource] = useState('');
   const [cadence, setCadence] = useState<number>(DEFAULT_CADENCE.donor);
   const [busy, setBusy] = useState(false);
@@ -56,6 +57,7 @@ export function AddPartnerPanel({
       setContactName('');
       setEmail('');
       setPhone('');
+      setAddress('');
       setSource('');
       setCadence(DEFAULT_CADENCE.donor);
       setError(null);
@@ -84,6 +86,7 @@ export function AddPartnerPanel({
         contact_name: contactName.trim() || null,
         email: email.trim() || null,
         phone: phone.trim() || null,
+        address: address.trim() || null,
         donor_tier: type === 'donor' ? 'first_time' : null,
         cadence_days: cadence > 0 ? cadence : null,
         source: source.trim() || null,
@@ -183,6 +186,11 @@ export function AddPartnerPanel({
         <div>
           <label className="field-label" htmlFor="pa-email">Email</label>
           <input id="pa-email" type="email" className="field-input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="optional" />
+        </div>
+
+        <div>
+          <label className="field-label" htmlFor="pa-address">Mailing address</label>
+          <textarea id="pa-address" rows={2} className="field-input" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="optional" />
         </div>
 
         <div>

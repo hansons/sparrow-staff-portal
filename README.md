@@ -88,14 +88,16 @@ Migrations:
 6. `supabase/migrations/0006_spine.sql`   (cross-system task API, triage, settings, quick wins, calendar)
 7. `supabase/migrations/0007_lcp_fk_cascade.sql`   (ON UPDATE CASCADE backfill for profiles FKs)
 8. `supabase/migrations/0008_partnerships.sql`   (Partnerships Room — partners + touchpoints + cadence sweep)
+9. `supabase/migrations/0009_lcp_curriculum_fields.sql`   (LCP curriculum content — focus, scripture, room artifact/month)
+10. `supabase/migrations/0010_lcp_resources.sql`   (LCP curriculum/resource Google Drive links)
 
 Seeds:
-9. `supabase/seed.sql`   (staff + sample tasks)
-10. `supabase/seed_twin_oaks.sql`   (61 lots + sample residents + work orders)
-11. `supabase/seed_social.sql`   (sample announcement + notification)
-12. `supabase/seed_lcp.sql`   (sample families + curriculum)
-13. `supabase/seed_spine.sql`   (recurring meeting cadences + quick wins + a demo Home layout)
-14. `supabase/seed_partnerships.sql`   (real community/church partners + synthetic donors/volunteers + touchpoints)
+11. `supabase/seed.sql`   (staff + sample tasks)
+12. `supabase/seed_twin_oaks.sql`   (61 lots + sample residents + work orders)
+13. `supabase/seed_social.sql`   (sample announcement + notification)
+14. `supabase/seed_lcp.sql`   (sample families + the real 48-session "Building Your House" curriculum)
+15. `supabase/seed_spine.sql`   (recurring meeting cadences + quick wins + a demo Home layout)
+16. `supabase/seed_partnerships.sql`   (real community/church partners + synthetic donors/volunteers + touchpoints)
 
 > ⚠️ Before staff sign in, edit `seed.sql` (or the `profiles` rows) so each `email`
 > matches the person's **real Google Workspace address**. The email list is the

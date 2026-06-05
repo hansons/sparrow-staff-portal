@@ -26,6 +26,8 @@ export interface Profile {
   lcp_role: LcpRole;
   /** Full Partnerships Room access independent of department (admins + dept='partnerships' have it implicitly). */
   partnerships_access: boolean;
+  /** Operations Room / staff-management access (Andrew, Susanna, Shelly). */
+  ops_access: boolean;
 }
 
 export interface Task {
