@@ -9,15 +9,22 @@ import { StaffAdmin } from './admin/StaffAdmin';
 export function AppShell() {
   const { profile } = useAuth();
   const [view, setView] = useState<View>('home');
+  const [navOpen, setNavOpen] = useState(false);
 
   if (!profile) return null;
   const isAdmin = profile.role === 'admin';
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header profile={profile} />
+      <Header profile={profile} onMenu={() => setNavOpen(true)} />
       <div className="flex flex-1">
-        <Sidebar view={view} isAdmin={isAdmin} onNavigate={setView} />
+        <Sidebar
+          view={view}
+          isAdmin={isAdmin}
+          onNavigate={setView}
+          open={navOpen}
+          onClose={() => setNavOpen(false)}
+        />
         <main className="flex-1">
           {view === 'home' && <HomeView />}
           {view === 'twin-oaks' && <TwinOaksRoom />}

@@ -4,6 +4,8 @@ interface Props {
   view: View;
   isAdmin: boolean;
   onNavigate: (v: View) => void;
+  open: boolean; // mobile drawer
+  onClose: () => void;
 }
 
 function Soon() {
@@ -16,13 +18,21 @@ function Soon() {
 
 const SOON_ROOMS = ['LifeChange', 'Partnerships', 'Operations'];
 
-export function Sidebar({ view, isAdmin, onNavigate }: Props) {
+function NavContent({
+  view,
+  isAdmin,
+  onNavigate,
+}: {
+  view: View;
+  isAdmin: boolean;
+  onNavigate: (v: View) => void;
+}) {
   const itemBase = 'flex items-center gap-2 rounded-lg px-3 py-2 text-left transition';
   const active = 'bg-sparrow-sage font-medium text-sparrow-green';
   const idle = 'text-sparrow-gray hover:bg-sparrow-mist hover:text-sparrow-ink';
 
   return (
-    <aside className="hidden w-56 shrink-0 flex-col border-r border-sparrow-rule bg-white px-3 py-5 md:flex">
+    <>
       <nav className="flex flex-1 flex-col gap-1 text-sm">
         <button onClick={() => onNavigate('home')} className={`${itemBase} ${view === 'home' ? active : idle}`}>
           Home
@@ -62,6 +72,40 @@ export function Sidebar({ view, isAdmin, onNavigate }: Props) {
       <span className={`${itemBase} text-sparrow-gray`}>
         Settings <Soon />
       </span>
-    </aside>
+    </>
+  );
+}
+
+export function Sidebar({ view, isAdmin, onNavigate, open, onClose }: Props) {
+  return (
+    <>
+      {/* Desktop: static sidebar */}
+      <aside className="hidden w-56 shrink-0 flex-col border-r border-sparrow-rule bg-white px-3 py-5 md:flex">
+        <NavContent view={view} isAdmin={isAdmin} onNavigate={onNavigate} />
+      </aside>
+
+      {/* Mobile: slide-in drawer */}
+      <div
+        onClick={onClose}
+        className={`fixed inset-0 z-40 bg-sparrow-ink/30 transition-opacity md:hidden ${
+          open ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+        aria-hidden
+      />
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-sparrow-rule bg-white px-3 py-5 transition-transform md:hidden ${
+          open ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <NavContent
+          view={view}
+          isAdmin={isAdmin}
+          onNavigate={(v) => {
+            onNavigate(v);
+            onClose();
+          }}
+        />
+      </aside>
+    </>
   );
 }
