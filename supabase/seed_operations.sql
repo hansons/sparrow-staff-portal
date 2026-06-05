@@ -12,7 +12,8 @@ update profiles set ops_access = true
 where lower(email) in (
   'executivedirector@sparrowinc.org',   -- Andrew
   'susannab@sparrowinc.org',            -- Susanna
-  'lifechangedirector@sparrowinc.org'   -- Shelly
+  'lifechangedirector@sparrowinc.org',  -- Shelly
+  'ryanlhanson@gmail.com'               -- Ryan (consultant — troubleshooting; remove before handoff)
 );
 
 -- ─── Demo: a management note (Bethany, by Susanna) ───────────────────
