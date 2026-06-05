@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useAuth } from '@/auth/AuthContext';
+import { ChatProvider } from '@/chat/ChatContext';
 import { Header } from './Header';
 import { Sidebar, type View } from './Sidebar';
 import { WidgetHome } from './home/WidgetHome';
 import { TasksView } from '@/pages/TasksView';
 import { CalendarView } from '@/pages/CalendarView';
+import { MessagesView } from '@/pages/MessagesView';
 import { SettingsView } from '@/pages/SettingsView';
 import { TwinOaksRoom } from './twinoaks/TwinOaksRoom';
 import { LcpRoom } from './lcp/LcpRoom';
@@ -33,32 +35,35 @@ export function AppShell() {
   const opsAccess = profile.ops_access;
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <Header profile={profile} onMenu={() => setNavOpen(true)} />
-      <div className="flex flex-1">
-        <Sidebar
-          view={view}
-          isAdmin={isAdmin}
-          lcpAccess={lcpAccess}
-          partnershipsAccess={partnershipsAccess}
-          opsAccess={opsAccess}
-          onNavigate={setView}
-          open={navOpen}
-          onClose={() => setNavOpen(false)}
-        />
-        <main className="flex-1">
-          {view === 'home' && <WidgetHome onNavigate={setView} />}
-          {view === 'tasks' && <TasksView />}
-          {view === 'calendar' && <CalendarView />}
-          {view === 'settings' && <SettingsView />}
-          {view === 'twin-oaks' && <TwinOaksRoom />}
-          {view === 'lcp' && <LcpRoom />}
-          {view === 'partnerships' && <PartnershipsRoom />}
-          {view === 'operations' && <OperationsRoom />}
-          {view === 'staff' && <StaffAdmin />}
-        </main>
+    <ChatProvider>
+      <div className="flex min-h-screen flex-col">
+        <Header profile={profile} onMenu={() => setNavOpen(true)} onNavigate={setView} />
+        <div className="flex flex-1">
+          <Sidebar
+            view={view}
+            isAdmin={isAdmin}
+            lcpAccess={lcpAccess}
+            partnershipsAccess={partnershipsAccess}
+            opsAccess={opsAccess}
+            onNavigate={setView}
+            open={navOpen}
+            onClose={() => setNavOpen(false)}
+          />
+          <main className="flex-1">
+            {view === 'home' && <WidgetHome onNavigate={setView} />}
+            {view === 'tasks' && <TasksView />}
+            {view === 'calendar' && <CalendarView />}
+            {view === 'messages' && <MessagesView />}
+            {view === 'settings' && <SettingsView />}
+            {view === 'twin-oaks' && <TwinOaksRoom />}
+            {view === 'lcp' && <LcpRoom />}
+            {view === 'partnerships' && <PartnershipsRoom />}
+            {view === 'operations' && <OperationsRoom />}
+            {view === 'staff' && <StaffAdmin />}
+          </main>
+        </div>
+        <ValuesFooter />
       </div>
-      <ValuesFooter />
-    </div>
+    </ChatProvider>
   );
 }

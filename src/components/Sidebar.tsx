@@ -1,4 +1,6 @@
-export type View = 'home' | 'twin-oaks' | 'lcp' | 'partnerships' | 'operations' | 'tasks' | 'calendar' | 'settings' | 'staff';
+import { useChat } from '@/chat/ChatContext';
+
+export type View = 'home' | 'twin-oaks' | 'lcp' | 'partnerships' | 'operations' | 'tasks' | 'calendar' | 'messages' | 'settings' | 'staff';
 
 interface Props {
   view: View;
@@ -36,6 +38,7 @@ function NavContent({
   opsAccess: boolean;
   onNavigate: (v: View) => void;
 }) {
+  const { unreadTotal } = useChat();
   const itemBase = 'flex items-center gap-2 rounded-lg px-3 py-2 text-left transition';
   const active = 'bg-sparrow-sage font-medium text-sparrow-green';
   const idle = 'text-sparrow-gray hover:bg-sparrow-mist hover:text-sparrow-ink';
@@ -51,6 +54,14 @@ function NavContent({
         </button>
         <button onClick={() => onNavigate('calendar')} className={`${itemBase} ${view === 'calendar' ? active : idle}`}>
           Calendar
+        </button>
+        <button onClick={() => onNavigate('messages')} className={`${itemBase} ${view === 'messages' ? active : idle}`}>
+          Messages
+          {unreadTotal > 0 && (
+            <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-sparrow-green px-1.5 text-[11px] font-semibold text-white">
+              {unreadTotal}
+            </span>
+          )}
         </button>
 
         <div className="my-3 border-t border-sparrow-rule" />
