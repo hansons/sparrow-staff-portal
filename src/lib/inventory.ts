@@ -3,6 +3,7 @@ import type {
   InvLocation, InvSubLocation, InvItem,
   InvMonthlySubmission, InvAddition, InvRemoval, InvComment,
   InvItemCondition, InvCostBasis, InvCostSource, InvExitMethod,
+  InvBentonSchedule, InvConsumablesSnapshot, InvBatchTally,
 } from './inventory-types';
 
 // ── Column sets ───────────────────────────────────────────────────────────
@@ -262,5 +263,123 @@ export async function recordFiling(year: number, notes?: string): Promise<void> 
   const { error } = await supabase
     .from('inv_filings')
     .upsert({ year, notes: notes ?? null, filed_at: new Date().toISOString() });
+  if (error) throw new Error(error.message);
+}
+
+// ── Filing view data ──────────────────────────────────────────────────────
+
+export interface FilingItem extends Omit<InvItem, 'sub_location'> {
+  location: InvLocation;
+  sub_location: InvSubLocation | null;
+}
+
+export async function fetchFilingData(): Promise<{
+  activeItems: FilingItem[];
+  removedSinceLastFiling: FilingItem[];
+  lastFiling: { year: number; filed_at: string } | null;
+}> {
+  const [itemsRes, filingRes] = await Promise.all([
+    supabase
+      .from('inv_items')
+      .select('*, location:inv_locations(id, name, sort_order), sub_location:inv_sub_locations(id, name)')
+      .order('benton_schedule')
+      .order('description'),
+    supabase
+      .from('inv_filings')
+      .select('year, filed_at')
+      .order('year', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  if (itemsRes.error) throw new Error(itemsRes.error.message);
+
+  const lastFiling = filingRes.data ?? null;
+  const cutoffDate = lastFiling?.filed_at.slice(0, 10) ?? '2020-01-01';
+  const all = (itemsRes.data ?? []) as FilingItem[];
+
+  return {
+    activeItems:            all.filter(i => i.status === 'active'),
+    removedSinceLastFiling: all.filter(
+      i => i.status === 'removed' && !!i.removed_date && i.removed_date > cutoffDate,
+    ),
+    lastFiling,
+  };
+}
+
+export async function markFiled(year: number): Promise<number> {
+  const { data, error } = await supabase.rpc('inv_mark_filed', { p_year: year });
+  if (error) throw new Error(error.message);
+  return (data as number) ?? 0;
+}
+
+export async function patchItemFiling(
+  id: string,
+  patch: { benton_schedule?: InvBentonSchedule; filed_as?: string | null; who_has_it?: string | null },
+): Promise<void> {
+  const { error } = await supabase.from('inv_items').update(patch).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+// ── Consumables (Schedule 2 annual estimates) ─────────────────────────────
+
+export async function fetchConsumablesSnapshot(year: number): Promise<InvConsumablesSnapshot[]> {
+  const { data, error } = await supabase
+    .from('inv_consumables_snapshots')
+    .select('*')
+    .eq('year', year)
+    .order('category');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as InvConsumablesSnapshot[];
+}
+
+export async function upsertConsumablesSnapshot(
+  year: number,
+  category: string,
+  amount: number,
+  notes: string | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from('inv_consumables_snapshots')
+    .upsert(
+      { year, category, amount, notes, updated_at: new Date().toISOString() },
+      { onConflict: 'year,category' },
+    );
+  if (error) throw new Error(error.message);
+}
+
+// ── Batch tallies ─────────────────────────────────────────────────────────
+
+export async function fetchBatchTallies(year: number): Promise<InvBatchTally[]> {
+  const { data, error } = await supabase
+    .from('inv_batch_tallies')
+    .select('*')
+    .eq('year', year)
+    .order('category');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as InvBatchTally[];
+}
+
+export async function upsertBatchTally(
+  year: number,
+  category: string,
+  patch: { filed_value?: number | null; decision?: 'keep' | 'update' | 'assess' | null; notes?: string | null },
+): Promise<void> {
+  const { error } = await supabase
+    .from('inv_batch_tallies')
+    .upsert(
+      { year, category, ...patch, updated_at: new Date().toISOString() },
+      { onConflict: 'category,year' },
+    );
+  if (error) throw new Error(error.message);
+}
+
+export async function ensureBatchTalliesExist(year: number, categories: readonly string[]): Promise<void> {
+  const existing = await fetchBatchTallies(year);
+  const existingCats = new Set(existing.map((t) => t.category));
+  const missing = categories.filter((c) => !existingCats.has(c));
+  if (missing.length === 0) return;
+  const { error } = await supabase.from('inv_batch_tallies').insert(
+    missing.map((category) => ({ category, year })),
+  );
   if (error) throw new Error(error.message);
 }

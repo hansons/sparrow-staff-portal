@@ -24,7 +24,7 @@ function previewTime(iso: string): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-export function MessagesView() {
+export function MessagesView({ embedded, onClose }: { embedded?: boolean; onClose?: () => void }) {
   const { profile } = useAuth();
   const { conversations, refresh } = useChat();
   const meId = profile?.id ?? '';
@@ -76,18 +76,31 @@ export function MessagesView() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-7.5rem)]">
+    <div className={`flex ${embedded ? 'h-full' : 'h-[calc(100vh-7.5rem)]'}`}>
       {/* Conversation list */}
       <div
-        className={`flex w-full flex-col border-r border-sparrow-rule bg-white md:w-80 md:shrink-0 ${
-          active ? 'hidden md:flex' : 'flex'
-        }`}
+        className={`flex w-full flex-col border-r border-sparrow-rule bg-white ${
+          embedded ? '' : 'md:w-80 md:shrink-0'
+        } ${active ? (embedded ? 'hidden' : 'hidden md:flex') : 'flex'}`}
       >
         <div className="flex items-center justify-between border-b border-sparrow-rule px-4 py-3">
           <h1 className="font-serif text-lg font-semibold">Messages</h1>
-          <button onClick={() => setNewOpen(true)} className="btn-primary !px-3 !py-1.5 text-xs">
-            New
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setNewOpen(true)} className="btn-primary !px-3 !py-1.5 text-xs">
+              New
+            </button>
+            {embedded && onClose && (
+              <button
+                onClick={onClose}
+                className="rounded-lg p-1.5 text-sparrow-gray hover:bg-sparrow-mist hover:text-sparrow-ink"
+                aria-label="Close messages"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
         <ul className="flex-1 overflow-y-auto">
@@ -136,13 +149,13 @@ export function MessagesView() {
       </div>
 
       {/* Thread */}
-      <div className={`flex-1 flex-col bg-white ${active ? 'flex' : 'hidden md:flex'}`}>
+      <div className={`flex-1 flex-col bg-white ${active ? 'flex' : (embedded ? 'hidden' : 'hidden md:flex')}`}>
         {active ? (
           <>
             <div className="flex items-center gap-3 border-b border-sparrow-rule px-4 py-3">
               <button
                 onClick={() => setActiveId(null)}
-                className="rounded-lg p-1 text-sparrow-gray hover:bg-sparrow-mist md:hidden"
+                className={`rounded-lg p-1 text-sparrow-gray hover:bg-sparrow-mist ${embedded ? '' : 'md:hidden'}`}
                 aria-label="Back to conversations"
               >
                 ←
@@ -150,12 +163,23 @@ export function MessagesView() {
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-sparrow-green text-xs font-semibold text-white">
                 {active.kind === 'group' ? '#' : initials(active.other_name)}
               </span>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-sparrow-ink">{conversationLabel(active)}</p>
                 <p className="text-xs text-sparrow-gray">
                   {active.kind === 'group' ? 'Group' : 'Direct message'}
                 </p>
               </div>
+              {embedded && onClose && (
+                <button
+                  onClick={onClose}
+                  className="rounded-lg p-1.5 text-sparrow-gray hover:bg-sparrow-mist hover:text-sparrow-ink"
+                  aria-label="Close messages"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              )}
             </div>
             <div className="flex-1 overflow-hidden">
               <ChatThread

@@ -1,5 +1,39 @@
 // ── Enums & constants ─────────────────────────────────────────────────────
 
+export type InvBentonSchedule = 'schedule_2' | 'schedule_4' | 'schedule_5a' | 'schedule_5b';
+export type InvFilingStatus   = 'not_filed' | 'added' | 'updated' | 'carried_over';
+
+export const BENTON_SCHEDULE_LABELS: Record<InvBentonSchedule, string> = {
+  schedule_2:  'Schedule 2 — Noninventory Supplies',
+  schedule_4:  'Schedule 4 — Professional Library',
+  schedule_5a: 'Schedule 5A — Other Taxable Personal Property',
+  schedule_5b: 'Schedule 5B — Small Hand Tools',
+};
+
+export const BENTON_SCHEDULE_SHORT: Record<InvBentonSchedule, string> = {
+  schedule_2:  'Sched 2',
+  schedule_4:  'Sched 4',
+  schedule_5a: 'Sched 5A',
+  schedule_5b: 'Sched 5B',
+};
+
+export const FILING_STATUS_META: Record<InvFilingStatus, { label: string; chip: string }> = {
+  added:        { label: 'New',       chip: 'bg-sparrow-green/10 text-sparrow-green' },
+  updated:      { label: 'Updated',   chip: 'bg-sparrow-gold/20 text-sparrow-gold' },
+  carried_over: { label: 'On File',   chip: 'bg-sparrow-mist text-sparrow-gray' },
+  not_filed:    { label: 'Not Filed', chip: 'bg-sparrow-rule text-sparrow-gray' },
+};
+
+export const CONSUMABLES_CATEGORIES = [
+  'General Office Supplies',
+  'Maintenance Supplies',
+  'Operating Supplies',
+  'Spare Parts',
+  'Other Noninventory Supplies',
+] as const;
+
+export type ConsumablesCategory = (typeof CONSUMABLES_CATEGORIES)[number];
+
 export const BATCH_CATEGORIES = [
   'Misc office supplies (non-consumable)',
   'Misc small hand tools',
@@ -7,7 +41,6 @@ export const BATCH_CATEGORIES = [
   'Misc household decor',
   'Misc holiday / seasonal decor',
   'Misc cleaning equipment (non-consumable)',
-  'Misc window treatments',
   'Misc books',
   "Misc children's books",
   "Misc children's toys",
@@ -15,6 +48,51 @@ export const BATCH_CATEGORIES = [
 ] as const;
 
 export type BatchCategory = (typeof BATCH_CATEGORIES)[number];
+
+export const BATCH_CATEGORY_HINTS: Record<string, string> = {
+  'Misc office supplies (non-consumable)':
+    'Durable supplies — staplers, tape dispensers, calculators. Not paper, ink, or pens (those are consumables).',
+  'Misc small hand tools':
+    'Non-power tools only — screwdrivers, wrenches, measuring tape, hammers. Any power tool or anything $50+ gets its own line.',
+  'Misc kitchen supplies':
+    'Spatulas, dish racks, measuring cups, serving utensils, can openers.',
+  'Misc household decor':
+    'Framed prints, vases, throw pillows, decorative items.',
+  'Misc holiday / seasonal decor':
+    'Christmas ornaments, wreaths, seasonal decorations.',
+  'Misc cleaning equipment (non-consumable)':
+    'Mops, brooms, dustpans, buckets. Not cleaning products — those are consumables.',
+  'Misc books':
+    'General reading books — inexpensive, non-technical. All go in Schedule 5A.',
+  "Misc children's books":
+    "Children's picture books and early readers.",
+  "Misc children's toys":
+    'Indoor toys, games, stuffed animals. Each item must be under $50.',
+  "Children's outdoor toys":
+    'Outdoor play items. Each must be under $50 — ride-ons and larger toys often exceed this; list those individually.',
+};
+
+export const BATCH_TALLY_SCHEDULE: Record<string, InvBentonSchedule> = {
+  'Misc small hand tools': 'schedule_5b',
+};
+
+export function getBatchSchedule(category: string): InvBentonSchedule {
+  return BATCH_TALLY_SCHEDULE[category] ?? 'schedule_5a';
+}
+
+// ── Batch tally ───────────────────────────────────────────────────────────
+
+export interface InvBatchTally {
+  id: string;
+  category: string;
+  year: number;
+  schedule: InvBentonSchedule;
+  filed_value: number | null;
+  decision: 'keep' | 'update' | 'assess' | null;
+  notes: string | null;
+  updated_at: string;
+  updated_by: string | null;
+}
 
 export type InvItemStatus    = 'active' | 'removed';
 export type InvItemCondition = 'new' | 'used';
@@ -68,9 +146,23 @@ export interface InvItem {
   acquired_date: string | null;
   removed_date: string | null;
   notes: string | null;
+  benton_schedule: InvBentonSchedule;
+  filing_status: InvFilingStatus;
+  filed_as: string | null;
+  who_has_it: string | null;
   created_at: string;
   updated_at: string;
   sub_location?: InvSubLocation;
+}
+
+export interface InvConsumablesSnapshot {
+  id: string;
+  year: number;
+  category: string;
+  amount: number;
+  notes: string | null;
+  updated_at: string;
+  updated_by: string | null;
 }
 
 export interface InvMonthlySubmission {

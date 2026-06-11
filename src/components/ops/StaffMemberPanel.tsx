@@ -491,10 +491,13 @@ function ChecklistTab({
       </div>
       <ul className="space-y-2">
         {steps.map((s) => (
-          <li key={s.id} className="flex items-start gap-2 rounded-xl border border-sparrow-rule/70 p-2.5">
+          <li
+            key={s.id}
+            className={`flex items-start gap-2 rounded-xl border p-2.5 ${s.parent_step_id ? 'ml-5 border-sparrow-rule/50 bg-sparrow-mist' : 'border-sparrow-rule/70'}`}
+          >
             <button
               onClick={() => toggle(s)}
-              className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 text-white ${
+              className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 text-white transition-colors ${
                 s.done ? 'border-sparrow-green bg-sparrow-green' : 'border-sparrow-rule'
               }`}
               aria-label="Toggle step"
@@ -502,8 +505,20 @@ function ChecklistTab({
               {s.done && '✓'}
             </button>
             <div className="min-w-0 flex-1">
-              <p className={`text-sm ${s.done ? 'text-sparrow-gray line-through' : 'text-sparrow-ink'}`}>{s.title}</p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <p className={`text-sm ${s.done ? 'text-sparrow-gray line-through' : 'text-sparrow-ink'}`}>{s.title}</p>
+                {s.estimated_minutes && (
+                  <span className="rounded-full bg-sparrow-rule/60 px-1.5 py-0.5 text-[10px] text-sparrow-gray">
+                    ~{s.estimated_minutes} min
+                  </span>
+                )}
+              </div>
               {s.description && <p className="text-xs text-sparrow-gray">{s.description}</p>}
+              {s.url && (
+                <a href={s.url} target="_blank" rel="noreferrer" className="text-xs text-sparrow-green hover:underline">
+                  Open link ↗
+                </a>
+              )}
             </div>
           </li>
         ))}

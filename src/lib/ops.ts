@@ -158,8 +158,10 @@ export async function completeReview(id: string, notes: string | null): Promise<
 }
 
 // ── Checklists (onboarding / offboarding) ────────────────────────────
-export async function fetchTemplates(): Promise<ChecklistTemplate[]> {
-  const { data, error } = await supabase.from('ops_checklist_templates').select('*').order('step_no');
+export async function fetchTemplates(kind?: ChecklistKind): Promise<ChecklistTemplate[]> {
+  let q = supabase.from('ops_checklist_templates').select('*').order('step_no');
+  if (kind) q = q.eq('kind', kind);
+  const { data, error } = await q;
   if (error) throw new Error(error.message);
   return (data ?? []) as ChecklistTemplate[];
 }
@@ -190,7 +192,19 @@ export async function fetchChecklistSteps(checklistId: string): Promise<Checklis
   return (data ?? []) as ChecklistStep[];
 }
 
-/** Create a checklist for a staff member and copy the template steps into it. */
+/** Returns the current user's active onboarding checklist, or null if none. */
+export async function fetchMyOnboardingChecklist(): Promise<Checklist | null> {
+  const { data, error } = await supabase
+    .from('ops_checklists')
+    .select('*')
+    .eq('kind', 'onboarding')
+    .eq('status', 'active')
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data as Checklist | null;
+}
+
+/** Create a checklist for a staff member and copy the current template steps into it. */
 export async function startChecklist(staffId: string, kind: ChecklistKind, createdBy: string): Promise<void> {
   const { data: run, error } = await supabase
     .from('ops_checklists')
@@ -202,20 +216,57 @@ export async function startChecklist(staffId: string, kind: ChecklistKind, creat
 
   const { data: tmpl, error: tErr } = await supabase
     .from('ops_checklist_templates')
-    .select('step_no, title, description')
+    .select('*')
     .eq('kind', kind)
     .order('step_no');
   if (tErr) throw new Error(tErr.message);
 
-  const steps = (tmpl as Pick<ChecklistTemplate, 'step_no' | 'title' | 'description'>[]).map((t) => ({
-    checklist_id: runId,
-    step_no: t.step_no,
-    title: t.title,
-    description: t.description,
-  }));
-  if (steps.length > 0) {
-    const { error: sErr } = await supabase.from('ops_checklist_steps').insert(steps);
+  const templates = (tmpl ?? []) as ChecklistTemplate[];
+  const topLevel = templates.filter((t) => t.parent_id === null);
+  const subtasks = templates.filter((t) => t.parent_id !== null);
+
+  if (topLevel.length > 0) {
+    const { error: sErr } = await supabase.from('ops_checklist_steps').insert(
+      topLevel.map((t) => ({
+        checklist_id: runId,
+        step_no: t.step_no,
+        title: t.title,
+        description: t.description,
+        url: t.url,
+        estimated_minutes: t.estimated_minutes,
+      })),
+    );
     if (sErr) throw new Error(sErr.message);
+  }
+
+  if (subtasks.length > 0) {
+    // Fetch inserted top-level steps to resolve parent_step_id by step_no
+    const { data: insertedTop, error: fetchErr } = await supabase
+      .from('ops_checklist_steps')
+      .select('id, step_no')
+      .eq('checklist_id', runId)
+      .is('parent_step_id', null);
+    if (fetchErr) throw new Error(fetchErr.message);
+
+    // Map: template.id → step.id (top-level step_no is identical to template.step_no)
+    const templateIdToStepId = new Map<number, string>();
+    for (const t of topLevel) {
+      const s = (insertedTop ?? []).find((x) => (x as { step_no: number }).step_no === t.step_no);
+      if (s) templateIdToStepId.set(t.id, (s as { id: string }).id);
+    }
+
+    const { error: subErr } = await supabase.from('ops_checklist_steps').insert(
+      subtasks.map((t) => ({
+        checklist_id: runId,
+        step_no: t.step_no,
+        title: t.title,
+        description: t.description,
+        url: t.url,
+        estimated_minutes: t.estimated_minutes,
+        parent_step_id: t.parent_id ? (templateIdToStepId.get(t.parent_id) ?? null) : null,
+      })),
+    );
+    if (subErr) throw new Error(subErr.message);
   }
 }
 
@@ -235,4 +286,69 @@ export async function completeChecklist(id: string): Promise<void> {
     .update({ status: 'complete', completed_at: new Date().toISOString() })
     .eq('id', id);
   if (error) throw new Error(error.message);
+}
+
+// ── Template management (ops-tier only) ──────────────────────────────
+
+export interface TemplateItemInput {
+  kind: ChecklistKind;
+  title: string;
+  description?: string | null;
+  url?: string | null;
+  estimated_minutes?: number | null;
+  parent_id?: number | null;
+}
+
+export async function addTemplateItem(input: TemplateItemInput): Promise<ChecklistTemplate> {
+  // Determine next step_no within this (kind, parent_id) group
+  let q = supabase
+    .from('ops_checklist_templates')
+    .select('step_no')
+    .eq('kind', input.kind)
+    .order('step_no', { ascending: false })
+    .limit(1);
+  q = input.parent_id ? q.eq('parent_id', input.parent_id) : q.is('parent_id', null);
+  const { data: existing } = await q;
+  const nextNo = (((existing?.[0] as { step_no: number } | undefined)?.step_no) ?? 0) + 1;
+
+  const { data, error } = await supabase
+    .from('ops_checklist_templates')
+    .insert({
+      kind: input.kind,
+      step_no: nextNo,
+      title: input.title,
+      description: input.description ?? null,
+      url: input.url ?? null,
+      estimated_minutes: input.estimated_minutes ?? null,
+      parent_id: input.parent_id ?? null,
+    })
+    .select('*')
+    .single();
+  if (error) throw new Error(error.message);
+  return data as ChecklistTemplate;
+}
+
+export async function updateTemplateItem(
+  id: number,
+  patch: Partial<Pick<ChecklistTemplate, 'title' | 'description' | 'url' | 'estimated_minutes'>>,
+): Promise<void> {
+  const { error } = await supabase.from('ops_checklist_templates').update(patch).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteTemplateItem(id: number): Promise<void> {
+  // Cascades to subtasks via the parent_id FK
+  const { error } = await supabase.from('ops_checklist_templates').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+/** Swap the step_no of two adjacent template items to reorder them. */
+export async function swapTemplateItems(
+  idA: number,
+  stepNoA: number,
+  idB: number,
+  stepNoB: number,
+): Promise<void> {
+  await supabase.from('ops_checklist_templates').update({ step_no: stepNoB }).eq('id', idA);
+  await supabase.from('ops_checklist_templates').update({ step_no: stepNoA }).eq('id', idB);
 }

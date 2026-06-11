@@ -1,6 +1,6 @@
 import { useChat } from '@/chat/ChatContext';
 
-export type View = 'home' | 'twin-oaks' | 'lcp' | 'partnerships' | 'operations' | 'tasks' | 'calendar' | 'messages' | 'settings' | 'staff';
+export type View = 'home' | 'twin-oaks' | 'lcp' | 'partnerships' | 'operations' | 'inventory' | 'tasks' | 'calendar' | 'messages' | 'settings' | 'staff' | 'onboarding';
 
 interface Props {
   view: View;
@@ -8,6 +8,7 @@ interface Props {
   lcpAccess: boolean;
   partnershipsAccess: boolean;
   opsAccess: boolean;
+  hasOnboarding: boolean;
   onNavigate: (v: View) => void;
   open: boolean; // mobile drawer
   onClose: () => void;
@@ -29,6 +30,7 @@ function NavContent({
   lcpAccess,
   partnershipsAccess,
   opsAccess,
+  hasOnboarding,
   onNavigate,
 }: {
   view: View;
@@ -36,6 +38,7 @@ function NavContent({
   lcpAccess: boolean;
   partnershipsAccess: boolean;
   opsAccess: boolean;
+  hasOnboarding: boolean;
   onNavigate: (v: View) => void;
 }) {
   const { unreadTotal } = useChat();
@@ -46,6 +49,17 @@ function NavContent({
   return (
     <>
       <nav className="flex flex-1 flex-col gap-1 text-sm">
+        {hasOnboarding && (
+          <button
+            onClick={() => onNavigate('onboarding')}
+            className={`${itemBase} ${view === 'onboarding' ? active : 'bg-sparrow-green/10 font-medium text-sparrow-green hover:bg-sparrow-green/20'}`}
+          >
+            My onboarding
+            {view !== 'onboarding' && (
+              <span className="ml-auto h-2 w-2 rounded-full bg-sparrow-green" />
+            )}
+          </button>
+        )}
         <button onClick={() => onNavigate('home')} className={`${itemBase} ${view === 'home' ? active : idle}`}>
           Home
         </button>
@@ -93,6 +107,12 @@ function NavContent({
             Operations
           </button>
         )}
+        <button
+          onClick={() => onNavigate('inventory')}
+          className={`${itemBase} ${view === 'inventory' ? active : idle}`}
+        >
+          Inventory
+        </button>
         {SOON_ROOMS.map((r) => (
           <span key={r} className={`${itemBase} text-sparrow-gray/70`}>
             {r} <Soon />
@@ -117,7 +137,7 @@ function NavContent({
   );
 }
 
-export function Sidebar({ view, isAdmin, lcpAccess, partnershipsAccess, opsAccess, onNavigate, open, onClose }: Props) {
+export function Sidebar({ view, isAdmin, lcpAccess, partnershipsAccess, opsAccess, hasOnboarding, onNavigate, open, onClose }: Props) {
   return (
     <>
       {/* Desktop: static sidebar */}
@@ -128,6 +148,7 @@ export function Sidebar({ view, isAdmin, lcpAccess, partnershipsAccess, opsAcces
           lcpAccess={lcpAccess}
           partnershipsAccess={partnershipsAccess}
           opsAccess={opsAccess}
+          hasOnboarding={hasOnboarding}
           onNavigate={onNavigate}
         />
       </aside>
@@ -151,6 +172,7 @@ export function Sidebar({ view, isAdmin, lcpAccess, partnershipsAccess, opsAcces
           lcpAccess={lcpAccess}
           partnershipsAccess={partnershipsAccess}
           opsAccess={opsAccess}
+          hasOnboarding={hasOnboarding}
           onNavigate={(v) => {
             onNavigate(v);
             onClose();

@@ -72,12 +72,12 @@ export function MentionInput({ value, onChange, onKeyDown, staff, disabled, plac
     if (mention && filtered.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelected((s) => Math.min(s + 1, filtered.length - 1));
+        setSelected((s) => (s + 1) % filtered.length);
         return;
       }
       if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelected((s) => Math.max(s - 1, 0));
+        setSelected((s) => (s - 1 + filtered.length) % filtered.length);
         return;
       }
       if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
@@ -95,28 +95,25 @@ export function MentionInput({ value, onChange, onKeyDown, staff, disabled, plac
     onKeyDown?.(e);
   }
 
+  const suggestion = mention && filtered.length > 0 ? filtered[selected] : null;
+
   return (
     <div className="relative flex-1">
-      {mention && filtered.length > 0 && (
-        <div className="absolute bottom-full left-0 z-50 mb-1 w-56 overflow-hidden rounded-xl border border-sparrow-rule bg-white shadow-lg">
-          {filtered.map((p, i) => (
-            <button
-              key={p.id}
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                insertMention(p);
-              }}
-              className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition ${
-                i === selected ? 'bg-sparrow-sage' : 'hover:bg-sparrow-mist'
-              }`}
-            >
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sparrow-green text-[10px] font-semibold text-white">
-                {initials(p.full_name)}
-              </span>
-              <span className="min-w-0 flex-1 truncate font-medium text-sparrow-ink">{p.full_name}</span>
-            </button>
-          ))}
+      {suggestion && (
+        <div className="absolute bottom-full left-0 z-50 mb-1 flex items-center gap-2">
+          <div
+            onMouseDown={(e) => { e.preventDefault(); insertMention(suggestion); }}
+            className="flex cursor-pointer items-center gap-2 rounded-lg border border-sparrow-rule bg-white px-3 py-1.5 shadow-sm transition hover:bg-sparrow-mist"
+          >
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sparrow-green text-[9px] font-bold text-white">
+              {initials(suggestion.full_name)}
+            </span>
+            <span className="text-sm font-medium text-sparrow-ink">{suggestion.full_name}</span>
+            <span className="rounded border border-sparrow-rule px-1 py-px text-[10px] text-sparrow-gray">Tab</span>
+          </div>
+          {filtered.length > 1 && (
+            <span className="text-xs text-sparrow-gray">+{filtered.length - 1} more · ↑↓</span>
+          )}
         </div>
       )}
       <textarea
