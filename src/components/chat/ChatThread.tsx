@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import type { ChatMessageWithAuthor } from '@/lib/chat';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import type { ChatMessageWithAuthor, ChatPerson } from '@/lib/chat';
+import { MentionInput } from './MentionInput';
 
 function timeLabel(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
@@ -13,16 +14,41 @@ function dayLabel(iso: string): string {
   return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
+function renderBody(body: string, staff: ChatPerson[], mine: boolean): ReactNode {
+  if (!staff.length) return body;
+  const escaped = staff.map((p) => p.full_name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const re = new RegExp(`@(${escaped.join('|')})`, 'g');
+  const parts: ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(body)) !== null) {
+    if (m.index > last) parts.push(body.slice(last, m.index));
+    parts.push(
+      <span
+        key={m.index}
+        className={mine ? 'font-semibold underline decoration-white/50' : 'font-semibold text-sparrow-green'}
+      >
+        {m[0]}
+      </span>,
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < body.length) parts.push(body.slice(last));
+  return parts.length ? <>{parts}</> : body;
+}
+
 export function ChatThread({
   messages,
   meId,
   isGroup,
   onSend,
+  staff,
 }: {
   messages: ChatMessageWithAuthor[];
   meId: string;
   isGroup: boolean;
   onSend: (body: string) => Promise<void>;
+  staff: ChatPerson[];
 }) {
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -87,7 +113,7 @@ export function ChatThread({
                           : 'rounded-bl-sm bg-sparrow-mist text-sparrow-ink'
                       }`}
                     >
-                      <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                      <p className="whitespace-pre-wrap break-words">{renderBody(m.body, staff, mine)}</p>
                       <p className={`mt-1 text-[10px] ${mine ? 'text-white/70' : 'text-sparrow-gray'}`}>
                         {timeLabel(m.created_at)}
                       </p>
@@ -102,13 +128,14 @@ export function ChatThread({
       </div>
 
       <div className="flex items-end gap-2 border-t border-sparrow-rule px-4 py-3">
-        <textarea
+        <MentionInput
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={setDraft}
           onKeyDown={onKeyDown}
-          rows={1}
-          placeholder="Write a message…"
-          className="field-input mt-0 max-h-32 flex-1 resize-none"
+          staff={staff}
+          disabled={busy}
+          placeholder="Write a message… (type @ to mention)"
+          className="field-input mt-0 max-h-32 w-full resize-none"
         />
         <button onClick={() => void submit()} disabled={busy || !draft.trim()} className="btn-primary">
           Send

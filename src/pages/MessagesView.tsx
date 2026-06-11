@@ -6,12 +6,14 @@ import { NewConversationPanel } from '@/components/chat/NewConversationPanel';
 import {
   conversationLabel,
   fetchMessages,
+  fetchStaff,
   initials,
   markRead,
   sendMessage,
   subscribeToMessages,
   type ChatConversation,
   type ChatMessageWithAuthor,
+  type ChatPerson,
 } from '@/lib/chat';
 
 function previewTime(iso: string): string {
@@ -25,11 +27,16 @@ function previewTime(iso: string): string {
 export function MessagesView() {
   const { profile } = useAuth();
   const { conversations, refresh } = useChat();
+  const meId = profile?.id ?? '';
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessageWithAuthor[]>([]);
   const [newOpen, setNewOpen] = useState(false);
+  const [staff, setStaff] = useState<ChatPerson[]>([]);
 
-  const meId = profile?.id ?? '';
+  useEffect(() => {
+    if (!meId) return;
+    void fetchStaff(meId).then(setStaff);
+  }, [meId]);
   const active = conversations.find((c) => c.channel_id === activeId) ?? null;
 
   // Load + live-update the open thread; mark it read on open and refresh badges.
@@ -156,6 +163,7 @@ export function MessagesView() {
                 meId={meId}
                 isGroup={active.kind === 'group'}
                 onSend={handleSend}
+                staff={staff}
               />
             </div>
           </>
