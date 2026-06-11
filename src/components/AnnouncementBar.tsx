@@ -10,7 +10,7 @@ import {
 // A single slim bar of team-wide notices on the home screen (admins post/dismiss).
 export function AnnouncementBar() {
   const { profile } = useAuth();
-  const isAdmin = profile?.role === 'admin';
+  const isAdmin = !!profile;
   const [items, setItems] = useState<Announcement[]>([]);
   const [posting, setPosting] = useState(false);
   const [draft, setDraft] = useState('');

@@ -60,6 +60,9 @@ export interface ChecklistTemplate {
   step_no: number;
   title: string;
   description: string | null;
+  url: string | null;
+  estimated_minutes: number | null;
+  parent_id: number | null;
 }
 
 export interface Checklist {
@@ -77,6 +80,9 @@ export interface ChecklistStep {
   step_no: number;
   title: string;
   description: string | null;
+  url: string | null;
+  estimated_minutes: number | null;
+  parent_step_id: string | null;
   done: boolean;
   done_by: string | null;
   done_at: string | null;

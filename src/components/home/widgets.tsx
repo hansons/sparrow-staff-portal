@@ -158,7 +158,7 @@ function TriageWidget({ ctx }: { ctx: WidgetContext }) {
     ctx.onChanged();
   }
 
-  if (pending.length === 0) return <Empty>Nothing to triage — your list is yours. ✨</Empty>;
+  if (pending.length === 0) return <Empty>No incoming tasks — you're all caught up. ✨</Empty>;
 
   return (
     <ul className="space-y-2">
@@ -383,7 +383,7 @@ function TeamPulseWidget({ ctx }: { ctx: WidgetContext }) {
 // ── Catalog (ordered = the default layout, filtered by availability) ──
 export const WIDGET_CATALOG: WidgetDef[] = [
   { key: 'today_tasks', label: 'My tasks — today', Comp: TodayTasksWidget },
-  { key: 'triage', label: 'Triage inbox', Comp: TriageWidget },
+  { key: 'triage', label: 'Incoming tasks', Comp: TriageWidget },
   { key: 'team_pulse', label: 'Team pulse', Comp: TeamPulseWidget, managerOnly: true },
   { key: 'upcoming_meetings', label: 'Upcoming meetings', Comp: UpcomingMeetingsWidget },
   { key: 'notifications', label: 'Notifications', Comp: NotificationsWidget },
