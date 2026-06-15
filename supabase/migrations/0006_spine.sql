@@ -9,9 +9,18 @@
 -- Run AFTER 0005_lcp.sql, then run seed_spine.sql.
 
 -- ─── Enums ───────────────────────────────────────────────────────────
-create type triage_status  as enum ('pending', 'accepted');
-create type quick_win_kind as enum ('lcp_onboarded', 'lcp_phase', 'grant_submitted', 'newsletter', 'procedure', 'custom');
-create type calendar_kind  as enum ('meeting', 'closure', 'holiday', 'ooo', 'lcp_session', 'toc', 'other');
+DO $$ BEGIN
+  CREATE TYPE triage_status AS ENUM ('pending', 'accepted');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE quick_win_kind AS ENUM ('lcp_onboarded', 'lcp_phase', 'grant_submitted', 'newsletter', 'procedure', 'custom');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE calendar_kind AS ENUM ('meeting', 'closure', 'holiday', 'ooo', 'lcp_session', 'toc', 'other');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
 -- ─── Cross-system task source + Triage ───────────────────────────────
 -- A task can originate in System 2 (a person creates it) or be emitted by a room
@@ -96,7 +105,7 @@ alter table notifications add column entity    text;   -- 'task' | 'family' | 'w
 alter table notifications add column entity_id uuid;
 
 -- ─── Per-user settings (customizable Home + ambient values footer) ───
-create table user_settings (
+create table if not exists user_settings (
   user_id               uuid primary key references profiles(id) on delete cascade,
   home_layout           jsonb,                       -- ordered array of widget keys; null = default
   values_footer_enabled boolean not null default true,
@@ -113,7 +122,7 @@ create trigger user_settings_updated_at before update on user_settings
 -- ─── Quick Wins (auto-generated celebration feed) ────────────────────
 -- "Staff should never manually log a win" — wins are emitted by the system when
 -- significant events complete. Staff may optionally annotate one.
-create table quick_wins (
+create table if not exists quick_wins (
   id         uuid primary key default gen_random_uuid(),
   kind       quick_win_kind not null default 'custom',
   title      text not null,
@@ -122,7 +131,7 @@ create table quick_wins (
   note       text,                                              -- optional staff add-on
   created_at timestamptz not null default now()
 );
-create index quick_wins_created_idx on quick_wins(created_at desc);
+create index if not exists quick_wins_created_idx on quick_wins(created_at desc);
 
 alter table quick_wins enable row level security;
 -- Wins are celebratory and non-sensitive: every signed-in staff member sees them and
@@ -144,7 +153,7 @@ begin
 end $$;
 
 -- ─── Calendar foundation (team calendar; rooms read/write their own kinds) ──
-create table calendar_events (
+create table if not exists calendar_events (
   id          uuid primary key default gen_random_uuid(),
   kind        calendar_kind not null default 'meeting',
   title       text not null,
@@ -157,7 +166,7 @@ create table calendar_events (
   created_by  uuid references profiles(id) on delete set null,
   created_at  timestamptz not null default now()
 );
-create index calendar_events_starts_idx on calendar_events(starts_at);
+create index if not exists calendar_events_starts_idx on calendar_events(starts_at);
 
 alter table calendar_events enable row level security;
 -- Everyone signed in sees the team calendar. Staff may add events (e.g. their OOO);

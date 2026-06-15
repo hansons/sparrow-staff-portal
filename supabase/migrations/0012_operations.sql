@@ -20,24 +20,39 @@ create or replace function has_ops_access() returns boolean
 $$;
 
 -- ─── Enums ───────────────────────────────────────────────────────────
-create type ops_doc_type        as enum ('job_description', 'review', 'offer_letter', 'onboarding', 'offboarding', 'other');
-create type ops_issue_status    as enum ('open', 'resolved');
-create type ops_review_status   as enum ('scheduled', 'completed');
-create type ops_checklist_kind  as enum ('onboarding', 'offboarding');
-create type ops_checklist_status as enum ('active', 'complete');
+DO $$ BEGIN
+  CREATE TYPE ops_doc_type AS ENUM ('job_description', 'review', 'offer_letter', 'onboarding', 'offboarding', 'other');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE ops_issue_status AS ENUM ('open', 'resolved');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE ops_review_status AS ENUM ('scheduled', 'completed');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE ops_checklist_kind AS ENUM ('onboarding', 'offboarding');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE ops_checklist_status AS ENUM ('active', 'complete');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
 -- ─── Staff management: notes ─────────────────────────────────────────
-create table ops_staff_notes (
+create table if not exists ops_staff_notes (
   id         uuid primary key default gen_random_uuid(),
   staff_id   uuid not null references profiles(id) on update cascade on delete cascade,   -- who it's about
   author_id  uuid references profiles(id) on update cascade on delete set null,
   body       text not null,
   created_at timestamptz not null default now()
 );
-create index ops_staff_notes_staff_idx on ops_staff_notes(staff_id);
+create index if not exists ops_staff_notes_staff_idx on ops_staff_notes(staff_id);
 
 -- ─── Staff management: documents (metadata + link; files live in Drive per the brief) ──
-create table ops_staff_documents (
+create table if not exists ops_staff_documents (
   id         uuid primary key default gen_random_uuid(),
   staff_id   uuid not null references profiles(id) on update cascade on delete cascade,
   label      text not null,
@@ -46,10 +61,10 @@ create table ops_staff_documents (
   created_by uuid references profiles(id) on update cascade on delete set null,
   created_at timestamptz not null default now()
 );
-create index ops_staff_documents_staff_idx on ops_staff_documents(staff_id);
+create index if not exists ops_staff_documents_staff_idx on ops_staff_documents(staff_id);
 
 -- ─── Issue log (sensitive — same tier, never visible to the subject) ──
-create table ops_issues (
+create table if not exists ops_issues (
   id          uuid primary key default gen_random_uuid(),
   staff_id    uuid not null references profiles(id) on update cascade on delete cascade,
   author_id   uuid references profiles(id) on update cascade on delete set null,
@@ -58,10 +73,10 @@ create table ops_issues (
   created_at  timestamptz not null default now(),
   resolved_at timestamptz
 );
-create index ops_issues_staff_idx on ops_issues(staff_id);
+create index if not exists ops_issues_staff_idx on ops_issues(staff_id);
 
 -- ─── Touchpoint tracker (1:1 log; "last met" = max(met_on) per staff) ──
-create table ops_touchpoints (
+create table if not exists ops_touchpoints (
   id         uuid primary key default gen_random_uuid(),
   staff_id   uuid not null references profiles(id) on update cascade on delete cascade,
   met_by     uuid references profiles(id) on update cascade on delete set null,
@@ -69,10 +84,10 @@ create table ops_touchpoints (
   note       text,
   created_at timestamptz not null default now()
 );
-create index ops_touchpoints_staff_idx on ops_touchpoints(staff_id, met_on desc);
+create index if not exists ops_touchpoints_staff_idx on ops_touchpoints(staff_id, met_on desc);
 
 -- ─── Performance reviews (schedule + record) ─────────────────────────
-create table ops_reviews (
+create table if not exists ops_reviews (
   id           uuid primary key default gen_random_uuid(),
   staff_id     uuid not null references profiles(id) on update cascade on delete cascade,
   due_date     date not null,
@@ -82,12 +97,12 @@ create table ops_reviews (
   notes        text,
   created_at   timestamptz not null default now()
 );
-create index ops_reviews_staff_idx on ops_reviews(staff_id);
+create index if not exists ops_reviews_staff_idx on ops_reviews(staff_id);
 
 -- ─── Onboarding / Offboarding checklists ─────────────────────────────
 -- Templates hold the default steps per kind; starting a checklist for a staff member
 -- copies the template steps into ops_checklist_steps (done in app code).
-create table ops_checklist_templates (
+create table if not exists ops_checklist_templates (
   id          serial primary key,
   kind        ops_checklist_kind not null,
   step_no     int  not null,
@@ -95,7 +110,7 @@ create table ops_checklist_templates (
   description text
 );
 
-create table ops_checklists (
+create table if not exists ops_checklists (
   id           uuid primary key default gen_random_uuid(),
   staff_id     uuid not null references profiles(id) on update cascade on delete cascade,
   kind         ops_checklist_kind not null,
@@ -104,9 +119,9 @@ create table ops_checklists (
   created_at   timestamptz not null default now(),
   completed_at timestamptz
 );
-create index ops_checklists_staff_idx on ops_checklists(staff_id);
+create index if not exists ops_checklists_staff_idx on ops_checklists(staff_id);
 
-create table ops_checklist_steps (
+create table if not exists ops_checklist_steps (
   id           uuid primary key default gen_random_uuid(),
   checklist_id uuid not null references ops_checklists(id) on delete cascade,
   step_no      int  not null,
@@ -116,7 +131,7 @@ create table ops_checklist_steps (
   done_by      uuid references profiles(id) on update cascade on delete set null,
   done_at      timestamptz
 );
-create index ops_checklist_steps_list_idx on ops_checklist_steps(checklist_id, step_no);
+create index if not exists ops_checklist_steps_list_idx on ops_checklist_steps(checklist_id, step_no);
 
 -- ─── Default checklist templates (reference data; Susanna can edit later) ──
 insert into ops_checklist_templates (kind, step_no, title, description) values

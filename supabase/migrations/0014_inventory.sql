@@ -12,27 +12,48 @@
 
 -- ── Enums ────────────────────────────────────────────────────────────────
 
-CREATE TYPE inv_item_status    AS ENUM ('active', 'removed');
-CREATE TYPE inv_item_condition AS ENUM ('new', 'used');
-CREATE TYPE inv_cost_source    AS ENUM ('known', 'estimated');
-CREATE TYPE inv_cost_basis     AS ENUM ('per_item', 'total');
-CREATE TYPE inv_sub_status     AS ENUM ('draft', 'submitted', 'approved');
-CREATE TYPE inv_exit_method    AS ENUM ('thrown_out', 'hauled_away', 'sold', 'donated_picked_up');
-CREATE TYPE inv_change_type    AS ENUM (
-  'acquired', 'quantity_updated', 'cost_updated',
-  'description_updated', 'location_changed', 'removed'
-);
+DO $$ BEGIN
+  CREATE TYPE inv_item_status AS ENUM ('active', 'removed');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE inv_item_condition AS ENUM ('new', 'used');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE inv_cost_source AS ENUM ('known', 'estimated');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE inv_cost_basis AS ENUM ('per_item', 'total');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE inv_sub_status AS ENUM ('draft', 'submitted', 'approved');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE inv_exit_method AS ENUM ('thrown_out', 'hauled_away', 'sold', 'donated_picked_up');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE inv_change_type AS ENUM (
+    'acquired', 'quantity_updated', 'cost_updated',
+    'description_updated', 'location_changed', 'removed'
+  );
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
 
 -- ── Locations (seeded, not user-created) ─────────────────────────────────
 
-CREATE TABLE inv_locations (
+CREATE TABLE IF NOT EXISTS inv_locations (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name       text NOT NULL UNIQUE,
   sort_order int  NOT NULL DEFAULT 0
 );
 
-CREATE TABLE inv_sub_locations (
+CREATE TABLE IF NOT EXISTS inv_sub_locations (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   location_id uuid NOT NULL REFERENCES inv_locations(id),
   name        text NOT NULL,
@@ -41,7 +62,7 @@ CREATE TABLE inv_sub_locations (
 );
 
 -- Which staff may submit for a given location (Shelly + Audrey for Office, etc.)
-CREATE TABLE inv_location_assignments (
+CREATE TABLE IF NOT EXISTS inv_location_assignments (
   location_id uuid NOT NULL REFERENCES inv_locations(id),
   user_id     uuid NOT NULL REFERENCES profiles(id),
   PRIMARY KEY (location_id, user_id)
@@ -55,7 +76,7 @@ CREATE TABLE inv_location_assignments (
 --   are updated cumulatively as new batch additions are approved.
 -- Individual items: one record per item (or item set with a shared qty).
 
-CREATE TABLE inv_items (
+CREATE TABLE IF NOT EXISTS inv_items (
   id               uuid               PRIMARY KEY DEFAULT gen_random_uuid(),
   location_id      uuid               NOT NULL REFERENCES inv_locations(id),
   sub_location_id  uuid               REFERENCES inv_sub_locations(id),
@@ -78,15 +99,15 @@ CREATE TABLE inv_items (
   last_modified_by uuid               REFERENCES profiles(id)
 );
 
-CREATE INDEX inv_items_location_idx ON inv_items (location_id);
-CREATE INDEX inv_items_status_idx   ON inv_items (status);
+CREATE INDEX IF NOT EXISTS inv_items_location_idx ON inv_items (location_id);
+CREATE INDEX IF NOT EXISTS inv_items_status_idx   ON inv_items (status);
 
 CREATE TRIGGER set_inv_items_updated_at
   BEFORE UPDATE ON inv_items
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- Full audit trail for every change to a register item
-CREATE TABLE inv_item_history (
+CREATE TABLE IF NOT EXISTS inv_item_history (
   id            uuid            PRIMARY KEY DEFAULT gen_random_uuid(),
   item_id       uuid            NOT NULL REFERENCES inv_items(id),
   change_type   inv_change_type NOT NULL,
@@ -104,7 +125,7 @@ CREATE TABLE inv_item_history (
 -- (removals), then submit. Susanna reviews, edits if needed, and approves —
 -- which triggers inv_approve_submission() to commit changes to the register.
 
-CREATE TABLE inv_monthly_submissions (
+CREATE TABLE IF NOT EXISTS inv_monthly_submissions (
   id              uuid           PRIMARY KEY DEFAULT gen_random_uuid(),
   location_id     uuid           NOT NULL REFERENCES inv_locations(id),
   period_month    int            NOT NULL CHECK (period_month BETWEEN 1 AND 12),
@@ -134,7 +155,7 @@ ALTER TABLE inv_item_history
 
 
 -- Section A — items that arrived this month
-CREATE TABLE inv_additions (
+CREATE TABLE IF NOT EXISTS inv_additions (
   id              uuid               PRIMARY KEY DEFAULT gen_random_uuid(),
   submission_id   uuid               NOT NULL REFERENCES inv_monthly_submissions(id) ON DELETE CASCADE,
   description     text               NOT NULL,
@@ -163,7 +184,7 @@ CREATE TRIGGER set_inv_additions_updated_at
 
 
 -- Section B — items that left this month
-CREATE TABLE inv_removals (
+CREATE TABLE IF NOT EXISTS inv_removals (
   id               uuid            PRIMARY KEY DEFAULT gen_random_uuid(),
   submission_id    uuid            NOT NULL REFERENCES inv_monthly_submissions(id) ON DELETE CASCADE,
   inv_item_id      uuid            REFERENCES inv_items(id), -- null = not yet in seeded register
@@ -183,7 +204,7 @@ CREATE TRIGGER set_inv_removals_updated_at
 
 
 -- Comments — Susanna ↔ staff, can target a whole submission or a specific line
-CREATE TABLE inv_comments (
+CREATE TABLE IF NOT EXISTS inv_comments (
   id            uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   submission_id uuid        NOT NULL REFERENCES inv_monthly_submissions(id) ON DELETE CASCADE,
   addition_id   uuid        REFERENCES inv_additions(id),
@@ -199,7 +220,7 @@ CREATE TABLE inv_comments (
 -- The Filing View diffs the current register against the last filing date
 -- to show additions (green), removals (red), and updates (yellow).
 
-CREATE TABLE inv_filings (
+CREATE TABLE IF NOT EXISTS inv_filings (
   id       uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   year     int         NOT NULL UNIQUE CHECK (year >= 2020),
   filed_by uuid        REFERENCES profiles(id),

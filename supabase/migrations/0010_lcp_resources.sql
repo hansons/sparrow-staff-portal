@@ -17,10 +17,16 @@
 -- Drive enforces the actual file access; the RLS below just keeps the wrong links off the
 -- wrong screen (a family never even sees a teacher-guide row).
 
-create type lcp_resource_kind     as enum ('handout', 'teacher_guide', 'devotional', 'ppt', 'art', 'other');
-create type lcp_resource_audience as enum ('participant', 'staff');
+DO $$ BEGIN
+  CREATE TYPE lcp_resource_kind AS ENUM ('handout', 'teacher_guide', 'devotional', 'ppt', 'art', 'other');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE lcp_resource_audience AS ENUM ('participant', 'staff');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
-create table lcp_resources (
+create table if not exists lcp_resources (
   id         uuid primary key default gen_random_uuid(),
   session_id int references lcp_sessions(id) on delete cascade,  -- null = program-wide (e.g. the House Diagram)
   kind       lcp_resource_kind not null default 'other',
@@ -30,7 +36,7 @@ create table lcp_resources (
   created_by uuid references profiles(id) on update cascade on delete set null,
   created_at timestamptz not null default now()
 );
-create index lcp_resources_session_idx on lcp_resources(session_id);
+create index if not exists lcp_resources_session_idx on lcp_resources(session_id);
 
 alter table lcp_resources enable row level security;
 

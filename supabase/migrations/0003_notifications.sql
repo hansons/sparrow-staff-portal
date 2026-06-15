@@ -5,7 +5,7 @@
 -- (not by clients), so they can't be spoofed.
 
 -- ─── Announcements ───────────────────────────────────────────────────
-create table announcements (
+create table if not exists announcements (
   id         uuid primary key default gen_random_uuid(),
   body       text not null,
   created_by uuid references profiles(id) on delete set null,
@@ -21,9 +21,12 @@ create policy announcements_admin on announcements
   for all to authenticated using (is_admin()) with check (is_admin());
 
 -- ─── Notifications ───────────────────────────────────────────────────
-create type notification_type as enum ('assigned', 'commented');
+DO $$ BEGIN
+  CREATE TYPE notification_type AS ENUM ('assigned', 'commented');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
-create table notifications (
+create table if not exists notifications (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null references profiles(id) on delete cascade,   -- recipient
   actor_id   uuid references profiles(id) on update cascade on delete set null,
@@ -33,7 +36,7 @@ create table notifications (
   read       boolean not null default false,
   created_at timestamptz not null default now()
 );
-create index notifications_user_idx on notifications(user_id, read);
+create index if not exists notifications_user_idx on notifications(user_id, read);
 
 alter table notifications enable row level security;
 -- You only ever see / update / clear your own. No INSERT policy: only the

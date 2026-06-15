@@ -17,10 +17,22 @@
 --     even without full-room access.
 
 -- ─── Enums ───────────────────────────────────────────────────────────
-create type partner_type     as enum ('donor', 'church', 'community', 'volunteer', 'prayer', 'fst', 'business', 'foundation');
-create type partner_stage    as enum ('prospect', 'active', 'lapsed', 'inactive');
-create type donor_tier       as enum ('first_time', 'recurring', 'major', 'lapsed');   -- donors only (nullable)
-create type touchpoint_method as enum ('email', 'phone', 'in_person', 'text', 'letter', 'event', 'other');
+DO $$ BEGIN
+  CREATE TYPE partner_type AS ENUM ('donor', 'church', 'community', 'volunteer', 'prayer', 'fst', 'business', 'foundation');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE partner_stage AS ENUM ('prospect', 'active', 'lapsed', 'inactive');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE donor_tier AS ENUM ('first_time', 'recurring', 'major', 'lapsed');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE touchpoint_method AS ENUM ('email', 'phone', 'in_person', 'text', 'letter', 'event', 'other');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
 -- Full Partnerships Room access for someone outside the 'partnerships' department (toggled
 -- in the Staff admin panel, like LCP's lcp_role). Admin + department='partnerships' already
@@ -28,7 +40,7 @@ create type touchpoint_method as enum ('email', 'phone', 'in_person', 'text', 'l
 alter table profiles add column partnerships_access boolean not null default false;
 
 -- ─── Partners (the relationship record + its stewardship rhythm) ──────
-create table partners (
+create table if not exists partners (
   id                uuid primary key default gen_random_uuid(),
   name              text not null,                          -- partner / org / person display name
   type              partner_type not null,
@@ -47,11 +59,11 @@ create table partners (
   created_at        timestamptz not null default now(),
   updated_at        timestamptz not null default now()
 );
-create index partners_owner_idx on partners(owner_id);
-create index partners_type_idx  on partners(type);
+create index if not exists partners_owner_idx on partners(owner_id);
+create index if not exists partners_type_idx on partners(type);
 
 -- ─── Touchpoints (every logged contact — the evidence the rhythm is being kept) ──
-create table partner_touchpoints (
+create table if not exists partner_touchpoints (
   id          uuid primary key default gen_random_uuid(),
   partner_id  uuid not null references partners(id) on delete cascade,
   logged_by   uuid references profiles(id) on update cascade on delete set null,
@@ -60,7 +72,7 @@ create table partner_touchpoints (
   summary     text,
   created_at  timestamptz not null default now()
 );
-create index partner_touchpoints_partner_idx on partner_touchpoints(partner_id, occurred_on desc);
+create index if not exists partner_touchpoints_partner_idx on partner_touchpoints(partner_id, occurred_on desc);
 
 create trigger partners_updated_at before update on partners
   for each row execute function set_updated_at();

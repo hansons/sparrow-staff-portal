@@ -14,35 +14,62 @@
 -- admin but only extended/no-PII for LCP). Admin role does NOT auto-grant LCP access.
 
 -- ─── Enums ───────────────────────────────────────────────────────────
-create type lcp_role         as enum ('full', 'extended');     -- staff LCP access tier
-create type family_status    as enum ('onboarding', 'on_track', 'needs_attention', 'graduated');
-create type event_kind       as enum ('curriculum', 'dinner', 'one_on_one', 'volunteer', 'other');
-create type attendance_status as enum ('on_time', 'late', 'no_show');
-create type homework_area     as enum ('relational', 'physical_financial', 'spiritual', 'emotional', 'general');
-create type homework_status   as enum ('assigned', 'submitted', 'complete');
-create type voucher_kind      as enum ('gift_card', 'housing');
-create type redemption_status as enum ('requested', 'fulfilled', 'cancelled');
-create type message_sender    as enum ('staff', 'family');
+DO $$ BEGIN
+  CREATE TYPE lcp_role AS ENUM ('full', 'extended');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE family_status AS ENUM ('onboarding', 'on_track', 'needs_attention', 'graduated');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE event_kind AS ENUM ('curriculum', 'dinner', 'one_on_one', 'volunteer', 'other');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE attendance_status AS ENUM ('on_time', 'late', 'no_show');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE homework_area AS ENUM ('relational', 'physical_financial', 'spiritual', 'emotional', 'general');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE homework_status AS ENUM ('assigned', 'submitted', 'complete');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE voucher_kind AS ENUM ('gift_card', 'housing');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE redemption_status AS ENUM ('requested', 'fulfilled', 'cancelled');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE message_sender AS ENUM ('staff', 'family');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
 -- LCP access tier on the existing staff directory (nullable = no LCP access).
 alter table profiles add column lcp_role lcp_role;
 
 -- ─── Curriculum structure: "Building Your House" (6 phases · 14 units · 48 sessions) ──
-create table lcp_phases (
+create table if not exists lcp_phases (
   id         serial primary key,
   number     int  not null,
   name       text not null,
   sort_order int  not null
 );
 
-create table lcp_units (
+create table if not exists lcp_units (
   id         serial primary key,
   phase_id   int  not null references lcp_phases(id) on delete cascade,
   name       text not null,
   sort_order int  not null
 );
 
-create table lcp_sessions (
+create table if not exists lcp_sessions (
   id                    serial primary key,
   unit_id               int  not null references lcp_units(id) on delete cascade,
   session_number        int  not null,            -- 1..48 across the whole program
@@ -51,11 +78,11 @@ create table lcp_sessions (
   review_interval_months int not null default 12, -- staleness tracking (Curriculum Health)
   last_reviewed         date
 );
-create index lcp_sessions_unit_idx on lcp_sessions(unit_id);
+create index if not exists lcp_sessions_unit_idx on lcp_sessions(unit_id);
 
 -- ─── Families (the participant unit + the participant sign-in allowlist) ──
 -- One login per family (the mother). Child tables hang off family_id.
-create table families (
+create table if not exists families (
   id                     uuid primary key default gen_random_uuid(),
   display_name           text not null,           -- e.g. "Maria R." (synthetic in seed)
   login_email            text unique not null,    -- allowlist + sign-in identity
@@ -68,7 +95,7 @@ create table families (
 );
 
 -- ─── Calendar events (curriculum sessions, dinners, one-on-ones, volunteer slots) ──
-create table lcp_events (
+create table if not exists lcp_events (
   id           uuid primary key default gen_random_uuid(),
   kind         event_kind not null default 'other',
   session_id   int references lcp_sessions(id) on delete set null,
@@ -81,10 +108,10 @@ create table lcp_events (
   created_by   uuid references profiles(id) on delete set null,
   created_at   timestamptz not null default now()
 );
-create index lcp_events_starts_idx on lcp_events(starts_at);
+create index if not exists lcp_events_starts_idx on lcp_events(starts_at);
 
 -- ─── Attendance (family × event) ─────────────────────────────────────
-create table lcp_attendance (
+create table if not exists lcp_attendance (
   id        uuid primary key default gen_random_uuid(),
   event_id  uuid not null references lcp_events(id) on delete cascade,
   family_id uuid not null references families(id) on delete cascade,
@@ -95,7 +122,7 @@ create table lcp_attendance (
 );
 
 -- ─── Homework (family × session, tagged by goal area) ────────────────
-create table lcp_homework (
+create table if not exists lcp_homework (
   id             uuid primary key default gen_random_uuid(),
   family_id      uuid not null references families(id) on delete cascade,
   session_id     int references lcp_sessions(id) on delete set null,
@@ -109,11 +136,11 @@ create table lcp_homework (
   assigned_by    uuid references profiles(id) on delete set null,
   created_at     timestamptz not null default now()
 );
-create index lcp_homework_family_idx on lcp_homework(family_id);
+create index if not exists lcp_homework_family_idx on lcp_homework(family_id);
 
 -- ─── Vouchers + redemptions (gift cards only — Sparrow never gives cash) ──
 -- Earn: on-time mandatory session + homework = 1 voucher. 3 vouchers = $25 gift card.
-create table lcp_redemptions (
+create table if not exists lcp_redemptions (
   id                   uuid primary key default gen_random_uuid(),
   family_id            uuid not null references families(id) on delete cascade,
   vouchers_spent       int  not null default 3,
@@ -124,7 +151,7 @@ create table lcp_redemptions (
   fulfilled_at         timestamptz
 );
 
-create table lcp_vouchers (
+create table if not exists lcp_vouchers (
   id            uuid primary key default gen_random_uuid(),
   family_id     uuid not null references families(id) on delete cascade,
   kind          voucher_kind not null default 'gift_card',
@@ -133,10 +160,10 @@ create table lcp_vouchers (
   redemption_id uuid references lcp_redemptions(id) on delete set null, -- null = unspent
   awarded_by    uuid references profiles(id) on delete set null
 );
-create index lcp_vouchers_family_idx on lcp_vouchers(family_id);
+create index if not exists lcp_vouchers_family_idx on lcp_vouchers(family_id);
 
 -- ─── Messages (one unified thread per family; replaces Signal for participant comms) ──
-create table lcp_messages (
+create table if not exists lcp_messages (
   id          uuid primary key default gen_random_uuid(),
   family_id   uuid not null references families(id) on delete cascade,
   sender_kind message_sender not null,
@@ -145,10 +172,10 @@ create table lcp_messages (
   created_at  timestamptz not null default now(),
   read_at     timestamptz
 );
-create index lcp_messages_family_idx on lcp_messages(family_id, created_at);
+create index if not exists lcp_messages_family_idx on lcp_messages(family_id, created_at);
 
 -- ─── Staff notes (internal — never visible to the participant) ───────
-create table lcp_staff_notes (
+create table if not exists lcp_staff_notes (
   id         uuid primary key default gen_random_uuid(),
   family_id  uuid not null references families(id) on delete cascade,
   author_id  uuid references profiles(id) on delete set null,
@@ -156,7 +183,7 @@ create table lcp_staff_notes (
   body       text not null,
   created_at timestamptz not null default now()
 );
-create index lcp_staff_notes_family_idx on lcp_staff_notes(family_id);
+create index if not exists lcp_staff_notes_family_idx on lcp_staff_notes(family_id);
 
 -- ─── Sign-in linking: staff first, then family, else reject ──────────
 -- Replaces the staff-only version from 0001. Staff behavior is unchanged: a

@@ -169,7 +169,7 @@ $$;
 -- decision    = January review outcome: keep (don't update filing),
 --               update (file a new amount), or assess (still deciding).
 
-CREATE TABLE inv_batch_tallies (
+CREATE TABLE IF NOT EXISTS inv_batch_tallies (
   id          uuid                PRIMARY KEY DEFAULT gen_random_uuid(),
   category    text                NOT NULL,
   year        smallint            NOT NULL,

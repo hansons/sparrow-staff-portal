@@ -7,10 +7,13 @@
 -- Run after the operations migration (number 0012).
 
 -- ─── Enums ───────────────────────────────────────────────────────────
-create type chat_channel_kind as enum ('direct', 'group');
+DO $$ BEGIN
+  CREATE TYPE chat_channel_kind AS ENUM ('direct', 'group');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
 -- ─── Tables ──────────────────────────────────────────────────────────
-create table chat_channels (
+create table if not exists chat_channels (
   id              uuid primary key default gen_random_uuid(),
   kind            chat_channel_kind not null default 'direct',
   title           text,                          -- group name; null for direct (UI shows the other member)
@@ -19,23 +22,23 @@ create table chat_channels (
   last_message_at timestamptz not null default now()   -- conversation-list sort key; bumped by trigger
 );
 
-create table chat_members (
+create table if not exists chat_members (
   channel_id   uuid not null references chat_channels(id) on delete cascade,
   user_id      uuid not null references profiles(id) on update cascade on delete cascade,
   last_read_at timestamptz not null default now(),     -- everything after this is "unread" for this member
   added_at     timestamptz not null default now(),
   primary key (channel_id, user_id)
 );
-create index chat_members_user_idx on chat_members(user_id);
+create index if not exists chat_members_user_idx on chat_members(user_id);
 
-create table chat_messages (
+create table if not exists chat_messages (
   id         uuid primary key default gen_random_uuid(),
   channel_id uuid not null references chat_channels(id) on delete cascade,
   author_id  uuid not null references profiles(id) on update cascade on delete cascade,
   body       text not null,
   created_at timestamptz not null default now()
 );
-create index chat_messages_channel_idx on chat_messages(channel_id, created_at);
+create index if not exists chat_messages_channel_idx on chat_messages(channel_id, created_at);
 
 -- ─── Membership helper (security definer → reads chat_members without RLS,
 --     so the membership policies below don't recurse; same pattern as is_admin()) ──

@@ -13,8 +13,14 @@
 
 -- ── New enums ─────────────────────────────────────────────────────────────
 
-CREATE TYPE inv_benton_schedule AS ENUM ('schedule_2', 'schedule_4', 'schedule_5a', 'schedule_5b');
-CREATE TYPE inv_filing_status   AS ENUM ('not_filed', 'added', 'updated', 'carried_over');
+DO $$ BEGIN
+  CREATE TYPE inv_benton_schedule AS ENUM ('schedule_2', 'schedule_4', 'schedule_5a', 'schedule_5b');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE inv_filing_status AS ENUM ('not_filed', 'added', 'updated', 'carried_over');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
 
 -- ── Amend inv_items ───────────────────────────────────────────────────────
@@ -31,7 +37,7 @@ ALTER TABLE inv_items
 -- County as noninventory supplies. These are NOT tracked item-by-item;
 -- only the estimated dollar total per category is recorded.
 
-CREATE TABLE inv_consumables_snapshots (
+CREATE TABLE IF NOT EXISTS inv_consumables_snapshots (
   id         uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
   year       smallint      NOT NULL,
   category   text          NOT NULL,
