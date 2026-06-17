@@ -103,6 +103,23 @@ export async function createGroup(title: string, memberIds: string[]): Promise<s
   return data as string;
 }
 
+/**
+ * Parse @Full Name mentions from a message body and return the unique profile IDs
+ * of the mentioned staff members. Same regex strategy as ChatThread.renderBody.
+ */
+export function parseMentionIds(body: string, staff: ChatPerson[]): string[] {
+  if (!staff.length) return [];
+  const escaped = staff.map((p) => p.full_name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const re = new RegExp(`@(${escaped.join('|')})`, 'g');
+  const ids = new Set<string>();
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(body)) !== null) {
+    const person = staff.find((p) => p.full_name === m![1]);
+    if (person) ids.add(person.id);
+  }
+  return Array.from(ids);
+}
+
 /** Active staff directory (excludes me) for the new-conversation picker. */
 export async function fetchStaff(meId: string): Promise<ChatPerson[]> {
   const { data, error } = await supabase

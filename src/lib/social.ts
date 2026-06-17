@@ -8,7 +8,7 @@ export interface Announcement {
   created_at: string;
 }
 
-export type NotificationType = 'assigned' | 'commented';
+export type NotificationType = 'assigned' | 'commented' | 'mentioned';
 
 export interface AppNotification {
   id: string;
@@ -16,7 +16,8 @@ export interface AppNotification {
   actor_id: string | null;
   type: NotificationType;
   task_id: string | null;
-  entity: string | null; // generic room pointer: 'task' | 'family' | 'work_order' | …
+  channel_id: string | null;
+  entity: string | null;
   entity_id: string | null;
   body: string | null;
   read: boolean;
@@ -64,5 +65,21 @@ export async function markRead(id: string): Promise<void> {
 /** Marks all of the current user's unread notifications read (RLS scopes to them). */
 export async function markAllRead(): Promise<void> {
   const { error } = await supabase.from('notifications').update({ read: true }).eq('read', false);
+  if (error) throw new Error(error.message);
+}
+
+/** Insert mention notifications for a sent chat message via a SECURITY DEFINER RPC. */
+export async function createMentionNotifications(
+  mentionedIds: string[],
+  actorId: string,
+  channelId: string,
+  body: string,
+): Promise<void> {
+  const { error } = await supabase.rpc('chat_notify_mentions', {
+    p_mentioned_ids: mentionedIds,
+    p_actor_id: actorId,
+    p_channel_id: channelId,
+    p_body: body,
+  });
   if (error) throw new Error(error.message);
 }

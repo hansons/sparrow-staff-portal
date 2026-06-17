@@ -13,7 +13,9 @@ function timeAgo(iso: string): string {
 
 function describe(n: AppNotification): string {
   const who = n.actor?.full_name ?? 'Someone';
-  return n.type === 'assigned' ? `${who} assigned you a task` : `${who} commented on a task`;
+  if (n.type === 'assigned') return `${who} assigned you a task`;
+  if (n.type === 'mentioned') return `${who} mentioned you in a message`;
+  return `${who} commented on a task`;
 }
 
 export function NotificationBell() {
@@ -29,6 +31,8 @@ export function NotificationBell() {
   }
   useEffect(() => {
     void load();
+    const timer = setInterval(() => void load(), 30_000);
+    return () => clearInterval(timer);
   }, []);
 
   const unread = items.filter((n) => !n.read).length;

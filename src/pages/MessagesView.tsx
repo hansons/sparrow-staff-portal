@@ -9,12 +9,14 @@ import {
   fetchStaff,
   initials,
   markRead,
+  parseMentionIds,
   sendMessage,
   subscribeToMessages,
   type ChatConversation,
   type ChatMessageWithAuthor,
   type ChatPerson,
 } from '@/lib/chat';
+import { createMentionNotifications } from '@/lib/social';
 
 function previewTime(iso: string): string {
   const d = new Date(iso);
@@ -67,6 +69,10 @@ export function MessagesView({ embedded, onClose }: { embedded?: boolean; onClos
   async function handleSend(body: string) {
     if (!activeId) return;
     await sendMessage(activeId, meId, body);
+    const mentionedIds = parseMentionIds(body, staff);
+    if (mentionedIds.length) {
+      void createMentionNotifications(mentionedIds, meId, activeId, body).catch(() => {});
+    }
     setMessages(await fetchMessages(activeId));
     refresh();
   }
